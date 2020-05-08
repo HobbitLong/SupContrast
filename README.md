@@ -19,7 +19,7 @@ Results on CIFAR-10:
 |  SimCLR          | ResNet50 | Unsupervised | Contrastive   |  93.6  |
 
 ## Running
-You might use `CUDA_VISIBLE_DEVICES` to set proper number of GPUs.  
+You might use `CUDA_VISIBLE_DEVICES` to set proper number of GPUs, and/or switch to CIFAR100 by `--dataset cifar100`.  
 **(1) Standard Cross-Entropy**
 ```
 python main_ce.py --batch_size 1024 \
