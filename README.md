@@ -10,6 +10,27 @@ This repo covers an reference implementation for the following papers in PyTorch
 ## Loss Function
 The loss function [`SupConLoss`](https://github.com/HobbitLong/SupContrast/blob/master/losses.py#L11) in `losses.py` takes `features` (L2 normalized) and `labels` as input, and return the loss. If `labels` is `None` or not passed to the it, it degenerates to SimCLR.
 
+Usage:
+```python
+from losses import SupConLoss
+
+# define loss with a temperature `temp`
+criterion = SupConLoss(temperature=temp)
+
+# features: [bsz, n_views, f_dim]
+# `n_views` is the number of crops from each image
+# better be L2 normalized in f_dim dimension
+features = ...
+# labels: [bsz]
+labels = ...
+
+# SupContrast
+loss = criterion(features, labels)
+# or SimCLR
+loss = criterion(features)
+...
+```
+
 ## Comparison
 Results on CIFAR-10:
 |          |Arch | Setting | Loss | Accuracy(%) |
@@ -17,6 +38,20 @@ Results on CIFAR-10:
 |  SupCrossEntropy | ResNet50 | Supervised   | Cross Entropy |  95.0  |
 |  SupContrast     | ResNet50 | Supervised   | Contrastive   |  96.0  | 
 |  SimCLR          | ResNet50 | Unsupervised | Contrastive   |  93.6  |
+
+Results on CIFAR-100 (Stay tuned):
+|          |Arch | Setting | Loss | Accuracy(%) |
+|----------|:----:|:---:|:---:|:---:|
+|  SupCrossEntropy | ResNet50 | Supervised   | Cross Entropy |  -  |
+|  SupContrast     | ResNet50 | Supervised   | Contrastive   |  -  | 
+|  SimCLR          | ResNet50 | Unsupervised | Contrastive   |  -  |
+
+Results on ImageNet (Stay tuned):
+|          |Arch | Setting | Loss | Accuracy(%) |
+|----------|:----:|:---:|:---:|:---:|
+|  SupCrossEntropy | ResNet50 | Supervised   | Cross Entropy |  -  |
+|  SupContrast     | ResNet50 | Supervised   | Contrastive   |  -  | 
+|  SimCLR          | ResNet50 | Unsupervised | Contrastive   |  -  |
 
 ## Running
 You might use `CUDA_VISIBLE_DEVICES` to set proper number of GPUs, and/or switch to CIFAR100 by `--dataset cifar100`.  
