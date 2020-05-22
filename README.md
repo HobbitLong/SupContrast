@@ -39,12 +39,12 @@ Results on CIFAR-10:
 |  SupContrast     | ResNet50 | Supervised   | Contrastive   |  96.0  | 
 |  SimCLR          | ResNet50 | Unsupervised | Contrastive   |  93.6  |
 
-Results on CIFAR-100 (Stay tuned):
+Results on CIFAR-100:
 |          |Arch | Setting | Loss | Accuracy(%) |
 |----------|:----:|:---:|:---:|:---:|
-|  SupCrossEntropy | ResNet50 | Supervised   | Cross Entropy |  -  |
-|  SupContrast     | ResNet50 | Supervised   | Contrastive   |  -  | 
-|  SimCLR          | ResNet50 | Unsupervised | Contrastive   |  -  |
+|  SupCrossEntropy | ResNet50 | Supervised   | Cross Entropy |  75.3 |
+|  SupContrast     | ResNet50 | Supervised   | Contrastive   |  76.5 | 
+|  SimCLR          | ResNet50 | Unsupervised | Contrastive   |  70.7 |
 
 Results on ImageNet (Stay tuned):
 |          |Arch | Setting | Loss | Accuracy(%) |
