@@ -189,9 +189,7 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     for idx, (images, labels) in enumerate(train_loader):
         data_time.update(time.time() - end)
 
-        images = torch.cat([images[0].unsqueeze(1), images[1].unsqueeze(1)],
-                           dim=1)
-        images = images.view(-1, 3, 32, 32).cuda(non_blocking=True)
+        images = torch.cat([images[0], images[1]], dim=0)
         labels = labels.cuda(non_blocking=True)
         bsz = labels.shape[0]
 
@@ -200,7 +198,8 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
 
         # compute loss
         features = model(images)
-        features = features.view(bsz, 2, -1)
+        f1, f2 = torch.split(features, [bsz, bsz], dim=0)
+        features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
         if opt.method == 'SupCon':
             loss = criterion(features, labels)
         elif opt.method == 'SimCLR':
