@@ -190,6 +190,7 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
         data_time.update(time.time() - end)
 
         images = torch.cat([images[0], images[1]], dim=0)
+        images = images.cuda(non_blocking=True)
         labels = labels.cuda(non_blocking=True)
         bsz = labels.shape[0]
 
