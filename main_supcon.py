@@ -15,6 +15,7 @@ from util import TwoCropTransform, AverageMeter
 from util import adjust_learning_rate, warmup_learning_rate
 from util import set_optimizer, save_model
 from networks.resnet_big import SupConResNet
+from networks.densenet import SupConDenseNet
 from losses import SupConLoss
 
 try:
@@ -160,7 +161,13 @@ def set_loader(opt):
 
 
 def set_model(opt):
-    model = SupConResNet(name=opt.model)
+    if opt.model.startswith("res"):
+        model = SupConResNet(name=opt.model)
+    elif opt.model.startswith("dense"):
+        model = SupConDenseNet(name=opt.model)
+    else:
+        raise NotImplemented(f"Model {opt.model} is not implemented")
+
     criterion = SupConLoss(temperature=opt.temp)
 
     # enable synchronized Batch Normalization
