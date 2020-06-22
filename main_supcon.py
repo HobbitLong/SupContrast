@@ -9,13 +9,19 @@ import math
 import tensorboard_logger as tb_logger
 import torch
 import torch.backends.cudnn as cudnn
+sys.path.append(os.getcwd())
+
+from constants import *
+
 from torchvision import transforms, datasets
 
 from util import TwoCropTransform, AverageMeter
 from util import adjust_learning_rate, warmup_learning_rate
 from util import set_optimizer, save_model
 from networks.resnet_big import SupConResNet
+from networks.densenet import SupConDenseNet
 from losses import SupConLoss
+from dataset.chexpert import get_dataloader 
 
 try:
     import apex
@@ -51,9 +57,9 @@ def parse_option():
                         help='momentum')
 
     # model dataset
-    parser.add_argument('--model', type=str, default='resnet50')
-    parser.add_argument('--dataset', type=str, default='cifar10',
-                        choices=['cifar10', 'cifar100'], help='dataset')
+    parser.add_argument('--model', type=str, default='densenet101')
+    parser.add_argument('--dataset', type=str, default='chexpert',
+                        choices=['cifar10', 'cifar100', 'chexpert'], help='dataset')
 
     # method
     parser.add_argument('--method', type=str, default='SupCon',
@@ -125,42 +131,70 @@ def set_loader(opt):
     elif opt.dataset == 'cifar100':
         mean = (0.5071, 0.4867, 0.4408)
         std = (0.2675, 0.2565, 0.2761)
+    elif opt.dataset == 'chexpert':
+        # TODO: figure this out
+        mean = (0.5071, 0.4867, 0.4408)
+        std = (0.2675, 0.2565, 0.2761)
+        print("Using CheXpert")
     else:
         raise ValueError('dataset not supported: {}'.format(opt.dataset))
     normalize = transforms.Normalize(mean=mean, std=std)
 
-    train_transform = transforms.Compose([
-        transforms.RandomResizedCrop(size=32, scale=(0.2, 1.)),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomApply([
-            transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)
-        ], p=0.8),
-        transforms.RandomGrayscale(p=0.2),
-        transforms.ToTensor(),
-        normalize,
-    ])
+    if opt.dataset.startswith("cifar"):
+        train_transform = transforms.Compose([
+            transforms.RandomResizedCrop(size=32, scale=(0.2, 1.)),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomApply([
+                transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)
+            ], p=0.8),
+            transforms.RandomGrayscale(p=0.2),
+            transforms.ToTensor(),
+            normalize,
+        ])
+    else:
+        # TODO: 
+        train_transform = transforms.Compose([
+            transforms.RandomCrop((200, 200)),
+            transforms.ToTensor()
+        ])
+        pass
 
     if opt.dataset == 'cifar10':
         train_dataset = datasets.CIFAR10(root=opt.data_folder,
                                          transform=TwoCropTransform(train_transform),
                                          download=True)
+        train_sampler = None
+        train_loader = torch.utils.data.DataLoader(
+            train_dataset, batch_size=opt.batch_size, shuffle=(train_sampler is None),
+            num_workers=opt.num_workers, pin_memory=True, sampler=train_sampler)
     elif opt.dataset == 'cifar100':
         train_dataset = datasets.CIFAR100(root=opt.data_folder,
                                           transform=TwoCropTransform(train_transform),
                                           download=True)
+        train_sampler = None
+        train_loader = torch.utils.data.DataLoader(
+            train_dataset, batch_size=opt.batch_size, shuffle=(train_sampler is None),
+            num_workers=opt.num_workers, pin_memory=True, sampler=train_sampler)
+    elif opt.dataset == 'chexpert':
+        dataset_args = {'data_path': CHEXPERT_CSV, 
+                        'data_transform': TwoCropTransform(train_transform)}
+        dataloader_args = {'batch_size': 2,
+                          'num_workers': 1}
+        train_loader = get_dataloader(dataloader_args, dataset_args)
     else:
         raise ValueError(opt.dataset)
-
-    train_sampler = None
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=opt.batch_size, shuffle=(train_sampler is None),
-        num_workers=opt.num_workers, pin_memory=True, sampler=train_sampler)
 
     return train_loader
 
 
 def set_model(opt):
-    model = SupConResNet(name=opt.model)
+    if opt.model.startswith("res"):
+        model = SupConResNet(name=opt.model)
+    elif opt.model.startswith("dense"):
+        model = SupConDenseNet(name=opt.model)
+    else:
+        raise NotImplemented(f"Model {opt.model} is not implemented")
+
     criterion = SupConLoss(temperature=opt.temp)
 
     # enable synchronized Batch Normalization
@@ -187,6 +221,7 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
 
     end = time.time()
     for idx, (images, labels) in enumerate(train_loader):
+
         data_time.update(time.time() - end)
 
         images = torch.cat([images[0], images[1]], dim=0)
