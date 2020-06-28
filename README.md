@@ -8,6 +8,9 @@ This repo covers an reference implementation for the following papers in PyTorch
 (2) A Simple Framework for Contrastive Learning of Visual Representations. [Paper](https://arxiv.org/abs/2002.05709)  
 
 ## Loss Function
+
+😁
+
 The loss function [`SupConLoss`](https://github.com/HobbitLong/SupContrast/blob/master/losses.py#L11) in `losses.py` takes `features` (L2 normalized) and `labels` as input, and return the loss. If `labels` is `None` or not passed to the it, it degenerates to SimCLR.
 
 Usage:
@@ -36,21 +39,21 @@ Results on CIFAR-10:
 |          |Arch | Setting | Loss | Accuracy(%) |
 |----------|:----:|:---:|:---:|:---:|
 |  SupCrossEntropy | ResNet50 | Supervised   | Cross Entropy |  95.0  |
-|  SupContrast     | ResNet50 | Supervised   | Contrastive   |  96.0  | 
+|  SupContrast     | ResNet50 | Supervised   | Contrastive   |  96.0  |
 |  SimCLR          | ResNet50 | Unsupervised | Contrastive   |  93.6  |
 
 Results on CIFAR-100:
 |          |Arch | Setting | Loss | Accuracy(%) |
 |----------|:----:|:---:|:---:|:---:|
 |  SupCrossEntropy | ResNet50 | Supervised   | Cross Entropy |  75.3 |
-|  SupContrast     | ResNet50 | Supervised   | Contrastive   |  76.5 | 
+|  SupContrast     | ResNet50 | Supervised   | Contrastive   |  76.5 |
 |  SimCLR          | ResNet50 | Unsupervised | Contrastive   |  70.7 |
 
 Results on ImageNet (Stay tuned):
 |          |Arch | Setting | Loss | Accuracy(%) |
 |----------|:----:|:---:|:---:|:---:|
 |  SupCrossEntropy | ResNet50 | Supervised   | Cross Entropy |  -  |
-|  SupContrast     | ResNet50 | Supervised   | Contrastive   |  -  | 
+|  SupContrast     | ResNet50 | Supervised   | Contrastive   |  -  |
 |  SimCLR          | ResNet50 | Unsupervised | Contrastive   |  -  |
 
 ## Running
