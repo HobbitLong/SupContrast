@@ -18,7 +18,7 @@ class SupConLoss(nn.Module):
         self.contrast_mode = contrast_mode
         self.base_temperature = base_temperature
 
-    def forward(self, features, labels=None, mask=None):
+    def forward(self, features, labels=None, mask=None, match_type="all"):
         """Compute loss for model. If both `labels` and `mask` are None,
         it degenerates to SimCLR unsupervised loss:
         https://arxiv.org/pdf/2002.05709.pdf
@@ -47,10 +47,50 @@ class SupConLoss(nn.Module):
         elif labels is None and mask is None:
             mask = torch.eye(batch_size, dtype=torch.float32).to(device)
         elif labels is not None:
-            labels = labels.contiguous().view(-1, 1)
+            #labels = labels.contiguous().view(-1, 1)
             if labels.shape[0] != batch_size:
                 raise ValueError('Num of labels does not match num of features')
-            mask = torch.eq(labels, labels.T).float().to(device)
+            #mask = torch.eq(labels, labels.T).float().to(device)
+            batch_size = labels.shape[0]
+            mask = torch.zeros((batch_size, batch_size)).to(device)
+
+            # populate mask for complete match 
+            # [0,1,0,0] == [0,1,0,0]
+            for i, gt_i in enumerate(labels):
+                for j, gt_j in enumerate(labels):
+                    if match_type == "all":
+                        mask[i,j] = 1 if (gt_i == gt_j).all() else 0 
+                    if match_type == "any":
+                        pos_idx = (gt_i == 1) | (gt_j == 1)
+                        gt_i = gt_i[pos_idx]
+                        gt_j = gt_j[pos_idx]
+                        mask[i,j] = 1 if (gt_i == gt_j).any() else 0 
+                    if match_type == "iou_weighted":
+                        pos_idx = (gt_i == 1) | (gt_j == 1)
+                        gt_i = gt_i[pos_idx]
+                        gt_j = gt_j[pos_idx]
+                        if pos_idx.sum() == 0:
+                            weight = 0
+                        else: 
+                            weight = (gt_i == gt_j).sum() / pos_idx.sum()
+                        mask[i,j] = weight
+                    if match_type == "f1_weighted":
+                        pos_idx = (gt_i == 1) | (gt_j == 1)
+                        gt_i = gt_i[pos_idx]
+                        gt_j = gt_j[pos_idx]
+                        tp = (gt_i == gt_j).sum()
+                        fp = gt_i.sum() - tp
+                        fn = gt_j.sum() - tp
+                        weight = (2*tp) / (2*tp + fp + fn)
+                        mask[i,j] = weight
+                    if match_type == "one_weighted":
+                        pos_idx = (gt_i == 1) | (gt_j == 1)
+                        gt_i = gt_i[pos_idx]
+                        gt_j = gt_j[pos_idx]
+                        weight = (gt_i == gt_j).sum() / len(gt_i)
+                        mask[i,j] = weight
+                    if match_type == "zero_and_one_weighted":
+                        mask[i,j] = (gt_i == gt_j).sum() / len(gt_i)
         else:
             mask = mask.float().to(device)
 
@@ -75,14 +115,18 @@ class SupConLoss(nn.Module):
 
         # tile mask
         mask = mask.repeat(anchor_count, contrast_count)
+
         # mask-out self-contrast cases
         logits_mask = torch.scatter(
-            torch.ones_like(mask),
+            torch.ones_like(mask).to(device),
             1,
             torch.arange(batch_size * anchor_count).view(-1, 1).to(device),
             0
         )
         mask = mask * logits_mask
+
+        # send mask to device
+        mask = mask
 
         # compute log_prob
         exp_logits = torch.exp(logits) * logits_mask

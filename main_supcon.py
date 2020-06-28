@@ -37,11 +37,11 @@ def parse_option():
                         help='print frequency')
     parser.add_argument('--save_freq', type=int, default=50,
                         help='save frequency')
-    parser.add_argument('--batch_size', type=int, default=256,
+    parser.add_argument('--batch_size', type=int, default=4,
                         help='batch_size')
     parser.add_argument('--num_workers', type=int, default=16,
                         help='num of workers to use')
-    parser.add_argument('--epochs', type=int, default=1000,
+    parser.add_argument('--epochs', type=int, default=2,
                         help='number of training epochs')
 
     # optimization
@@ -57,13 +57,15 @@ def parse_option():
                         help='momentum')
 
     # model dataset
-    parser.add_argument('--model', type=str, default='densenet101')
+    parser.add_argument('--model', type=str, default='densenet121')
     parser.add_argument('--dataset', type=str, default='chexpert',
                         choices=['cifar10', 'cifar100', 'chexpert'], help='dataset')
 
     # method
     parser.add_argument('--method', type=str, default='SupCon',
                         choices=['SupCon', 'SimCLR'], help='choose method')
+    parser.add_argument('--match_type', type=str, default='all',
+                        choices=['all','any','iou_weighted','f1_weighted', 'one_weighted','zero_and_one_weighted'], help='choose method')
 
     # temperature
     parser.add_argument('--temp', type=float, default=0.07,
@@ -176,9 +178,9 @@ def set_loader(opt):
             train_dataset, batch_size=opt.batch_size, shuffle=(train_sampler is None),
             num_workers=opt.num_workers, pin_memory=True, sampler=train_sampler)
     elif opt.dataset == 'chexpert':
-        dataset_args = {'data_path': CHEXPERT_CSV, 
+        dataset_args = {'data_path': CHEXPERT_TRAIN_CSV, 
                         'data_transform': TwoCropTransform(train_transform)}
-        dataloader_args = {'batch_size': 2,
+        dataloader_args = {'batch_size': opt.batch_size,
                           'num_workers': 1}
         train_loader = get_dataloader(dataloader_args, dataset_args)
     else:
@@ -195,7 +197,7 @@ def set_model(opt):
     else:
         raise NotImplemented(f"Model {opt.model} is not implemented")
 
-    criterion = SupConLoss(temperature=opt.temp)
+    criterion = SupConLoss(temperature=opt.temp,match_type=opt.match_type)
 
     # enable synchronized Batch Normalization
     if opt.syncBN:
@@ -224,6 +226,10 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
 
         data_time.update(time.time() - end)
 
+        # stack labels 
+        labels = torch.stack(labels)
+        labels = labels.transpose_(0,1)
+
         images = torch.cat([images[0], images[1]], dim=0)
         images = images.cuda(non_blocking=True)
         labels = labels.cuda(non_blocking=True)
@@ -234,7 +240,9 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
 
         # compute loss
         features = model(images)
+
         f1, f2 = torch.split(features, [bsz, bsz], dim=0)
+
         features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
         if opt.method == 'SupCon':
             loss = criterion(features, labels)

@@ -84,6 +84,8 @@ class CheXpertDataset(Dataset):
 
         path = CHEXPERT_DATA_DIR / self.df.iloc[idx]["Path"]
         x = cv2.imread(str(path), 0)
+        if x is None: 
+            print(path)
         x = util.resize_img(x, 256)
         x = Image.fromarray(x).convert('RGB')
 

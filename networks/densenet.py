@@ -52,6 +52,7 @@ class SupConDenseNet(nn.Module):
 
     def forward(self, x):
         feat = self.encoder.module.features(x) # batch x feature_size x 3 x 3
+        #feat = self.encoder.features(x) # batch x feature_size x 3 x 3
         feat = F.relu(feat, inplace=True)
         feat = self.pool(feat) 
         feat = torch.flatten(feat, 1)
