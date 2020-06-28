@@ -11,11 +11,12 @@ import sys
 import torch
 import torchvision
 import cv2
+import util
 import argparse
 import torchvision.transforms as t
 sys.path.append(os.getcwd())
 
-from constants import *
+from constants        import *
 from torch.utils.data import Dataset, DataLoader
 from torchvision      import transforms
 from typing           import Union
@@ -79,22 +80,18 @@ class CheXpertDataset(Dataset):
             y (list): list of labels associated with the image
         '''
 
-        #y = list(self.df.iloc[idx][list(self.label_cols)])
-        y = self.df.iloc[idx]["Cardiomegaly"]
+        y = list(self.df.iloc[idx][list(self.label_cols)])
 
         path = CHEXPERT_DATA_DIR / self.df.iloc[idx]["Path"]
-        #x = Image.open(path).convert('RGB')
-        x = self.resize_img(cv2.imread(str(path), 0), 300)
+        x = cv2.imread(str(path), 0)
+        x = util.resize_img(x, 256)
         x = Image.fromarray(x).convert('RGB')
 
         if self.data_transform is not None:
             x = self.data_transform(x)
 
-        #print(x.shape) 
-        #x = x.unsqueeze(0)
-        ##print(x.shape) 
-
         return x, y
+
 
     def resize_img(self, img, scale):
         """TODO: 
@@ -155,7 +152,8 @@ if __name__ == "__main__":
     dataloader = get_dataloader(dataloader_args, dataset_args)
 
     # test dataset shape
-    for x, y in dataloader: 
+    for x, y in dataloader:
+        
         print(x.shape) #[batch size, color channels, height, width]
         print(y)
 
