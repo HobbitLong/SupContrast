@@ -53,7 +53,10 @@ def parse_option():
     # model dataset
     parser.add_argument('--model', type=str, default='resnet50')
     parser.add_argument('--dataset', type=str, default='cifar10',
-                        choices=['cifar10', 'cifar100'], help='dataset')
+                        choices=['cifar10', 'cifar100', 'path'], help='dataset')
+    parser.add_argument('--mean', type=str, help='mean of dataset in path in form of str tuple')
+    parser.add_argument('--std', type=str, help='std of dataset in path in form of str tuple')
+    parser.add_argument('--data_folder', type=str, default=None, help='path to custom dataset')
 
     # method
     parser.add_argument('--method', type=str, default='SupCon',
@@ -75,8 +78,15 @@ def parse_option():
 
     opt = parser.parse_args()
 
+    # check if dataset is path that passed required arguments
+    if opt.dataset == 'path':
+        assert opt.data_folder is not None \
+            and opt.mean is not None \
+            and opt.std is not None
+
     # set the path according to the environment
-    opt.data_folder = './datasets/'
+    if opt.data_folder is None:
+        opt.data_folder = './datasets/'
     opt.model_path = './save/SupCon/{}_models'.format(opt.dataset)
     opt.tb_path = './save/SupCon/{}_tensorboard'.format(opt.dataset)
 
@@ -125,6 +135,9 @@ def set_loader(opt):
     elif opt.dataset == 'cifar100':
         mean = (0.5071, 0.4867, 0.4408)
         std = (0.2675, 0.2565, 0.2761)
+    elif opt.dataset == 'path':
+        mean = eval(opt.mean)
+        std = eval(opt.mean)
     else:
         raise ValueError('dataset not supported: {}'.format(opt.dataset))
     normalize = transforms.Normalize(mean=mean, std=std)
@@ -148,6 +161,9 @@ def set_loader(opt):
         train_dataset = datasets.CIFAR100(root=opt.data_folder,
                                           transform=TwoCropTransform(train_transform),
                                           download=True)
+    elif opt.dataset == 'path':
+        train_dataset = datasets.ImageFolder(root=opt.data_folder,
+                                            transform=TwoCropTransform(train_transform))
     else:
         raise ValueError(opt.dataset)
 
@@ -190,8 +206,9 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
         data_time.update(time.time() - end)
 
         images = torch.cat([images[0], images[1]], dim=0)
-        images = images.cuda(non_blocking=True)
-        labels = labels.cuda(non_blocking=True)
+        if torch.cuda.is_available():
+            images = images.cuda(non_blocking=True)
+            labels = labels.cuda(non_blocking=True)
         bsz = labels.shape[0]
 
         # warm-up learning rate

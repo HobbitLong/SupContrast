@@ -93,6 +93,21 @@ python main_linear.py --batch_size 512 \
   --ckpt /path/to/model.pth
 ```
 
+On custom dataset:
+```
+python main_supcon.py --batch_size 1024 \
+  --learning_rate 0.5  \ 
+  --temp 0.1 --cosine \
+  --dataset path \
+  --data_folder ./path \
+  --mean "(0.4914, 0.4822, 0.4465)" \
+  --std "(0.2675, 0.2565, 0.2761)" \
+  --method SimCLR
+```
+
+The `--data_folder` must be of form ./path/<label>/xxx.png folowing https://pytorch.org/docs/stable/torchvision/datasets.html#torchvision.datasets.ImageFolder convension.
+
+and 
 ## t-SNE Visualization
 
 **(1) Standard Cross-Entropy**
