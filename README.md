@@ -50,7 +50,7 @@ Results on ImageNet (Stay tuned):
 |          |Arch | Setting | Loss | Accuracy(%) |
 |----------|:----:|:---:|:---:|:---:|
 |  SupCrossEntropy | ResNet50 | Supervised   | Cross Entropy |  -  |
-|  SupContrast     | ResNet50 | Supervised   | Contrastive   |  -  | 
+|  SupContrast     | ResNet50 | Supervised   | Contrastive   |  79.1 (MoCo trick)  | 
 |  SimCLR          | ResNet50 | Unsupervised | Contrastive   |  -  |
 
 ## Running
