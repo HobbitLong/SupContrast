@@ -138,7 +138,7 @@ def set_loader(opt):
         std = (0.2675, 0.2565, 0.2761)
     elif opt.dataset == 'path':
         mean = eval(opt.mean)
-        std = eval(opt.mean)
+        std = eval(opt.std)
     else:
         raise ValueError('dataset not supported: {}'.format(opt.dataset))
     normalize = transforms.Normalize(mean=mean, std=std)
