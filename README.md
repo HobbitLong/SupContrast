@@ -69,7 +69,9 @@ python main_supcon.py --batch_size 1024 \
   --temp 0.1 \
   --cosine
 ```
-You can also specify `--syncBN` but I found it not crucial for SupContrast (`syncBN` 95.9% v.s. `BN` 96.0%).  
+
+~~You can also specify `--syncBN` but I found it not crucial for SupContrast (`syncBN` 95.9% v.s. `BN` 96.0%). ~~
+
 Linear evaluation stage:
 ```
 python main_linear.py --batch_size 512 \
