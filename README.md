@@ -70,7 +70,9 @@ python main_supcon.py --batch_size 1024 \
   --cosine
 ```
 
-~~You can also specify `--syncBN` but I found it not crucial for SupContrast (`syncBN` 95.9% v.s. `BN` 96.0%). ~~
+<s>You can also specify `--syncBN` but I found it not crucial for SupContrast (`syncBN` 95.9% v.s. `BN` 96.0%). </s>
+
+WARN: Currently, `--syncBN` has no effect since `DataParallel` is used instead of `DistributedDataParaleel`
 
 Linear evaluation stage:
 ```
