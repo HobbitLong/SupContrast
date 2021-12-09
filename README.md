@@ -7,6 +7,10 @@ This repo covers an reference implementation for the following papers in PyTorch
 (1) Supervised Contrastive Learning. [Paper](https://arxiv.org/abs/2004.11362)  
 (2) A Simple Framework for Contrastive Learning of Visual Representations. [Paper](https://arxiv.org/abs/2002.05709)  
 
+## Update
+
+ImageNet model (small batch size with the trick of the momentum encoder) is released [here](https://www.dropbox.com/s/l4a69ececk4spdt/supcon.pth?dl=0).
+
 ## Loss Function
 The loss function [`SupConLoss`](https://github.com/HobbitLong/SupContrast/blob/master/losses.py#L11) in `losses.py` takes `features` (L2 normalized) and `labels` as input, and return the loss. If `labels` is `None` or not passed to the it, it degenerates to SimCLR.
 
