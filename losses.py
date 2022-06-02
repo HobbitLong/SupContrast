@@ -47,15 +47,21 @@ class SupConLoss(nn.Module):
         elif labels is None and mask is None:
             mask = torch.eye(batch_size, dtype=torch.float32).to(device)
         elif labels is not None:
+            # [bsz, 1]
             labels = labels.contiguous().view(-1, 1)
             if labels.shape[0] != batch_size:
                 raise ValueError('Num of labels does not match num of features')
+            # [bsz, bsz]
             mask = torch.eq(labels, labels.T).float().to(device)
         else:
             mask = mask.float().to(device)
-
+        # n_views
         contrast_count = features.shape[1]
-        contrast_feature = torch.cat(torch.unbind(features, dim=1), dim=0)
+
+        # [bsz x n_views, -1]
+        # contrast_feature = torch.cat(torch.unbind(features, dim=1), dim=0)
+        contrast_feature = features.reshape(batch_size * contrast_count, -1)
+        
         if self.contrast_mode == 'one':
             anchor_feature = features[:, 0]
             anchor_count = 1
@@ -74,11 +80,19 @@ class SupConLoss(nn.Module):
         logits_max, _ = torch.max(anchor_dot_contrast, dim=1, keepdim=True)
         logits = anchor_dot_contrast - logits_max.detach()
 
-        print('[sum1]', mask.sum())
-        print('[mask1]', mask)
-
-        # tile mask
-        mask = mask.repeat(anchor_count, contrast_count)
+        # [bsz, bsz] -> [bsz x n_views, bsz x n_views]
+        # [[1, 1], [0, 0]]
+        # [[1, 1], [0, 0]]
+        # [[0, 0], [1, 1]]
+        # [[0, 0], [1, 1]]
+        # [1, 1, 0, 0]
+        # [1, 1, 0, 0]
+        # [0, 0, 1, 1]
+        # [0, 0, 1, 1]
+        mask = mask[:, None, :, None].repeat(1, anchor_count, 1, anchor_count).view(
+            contrast_count * anchor_count, -1)
+        # mask = mask.repeat(anchor_count, contrast_count)
+ 
         # mask-out self-contrast cases
         logits_mask = torch.scatter(
             torch.ones_like(mask),
@@ -88,18 +102,12 @@ class SupConLoss(nn.Module):
         )
         mask = mask * logits_mask
 
-        print('[logits_sum1]', logits_mask.sum())
-        print('[logits_mask1]', logits_mask)
-
         # compute log_prob
         exp_logits = torch.exp(logits) * logits_mask
         log_prob = logits - torch.log(exp_logits.sum(1, keepdim=True) + 1e-9)
 
         # compute mean of log-likelihood over positive
         mean_log_prob_pos = (mask * log_prob).sum(1) / mask.sum(1)
-
-        print('[sum2]', mask.sum())
-        print('[mask2]', mask)
 
         # loss
         loss = - (self.temperature / self.base_temperature) * mean_log_prob_pos
