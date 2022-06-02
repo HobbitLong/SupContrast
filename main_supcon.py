@@ -38,6 +38,10 @@ def parse_option():
     parser.add_argument('--epochs', type=int, default=1000,
                         help='number of training epochs')
 
+    # checkpoint name
+    parser.add_argument('--ckpt_name', type=str, required=True,
+                        help='checkpoint name')
+
     # optimization
     parser.add_argument('--learning_rate', type=float, default=0.05,
                         help='learning rate')
@@ -117,11 +121,11 @@ def parse_option():
         else:
             opt.warmup_to = opt.learning_rate
 
-    opt.tb_folder = os.path.join(opt.tb_path, opt.model_name)
+    opt.tb_folder = os.path.join(opt.tb_path, opt.ckpt_name)
     if not os.path.isdir(opt.tb_folder):
         os.makedirs(opt.tb_folder)
 
-    opt.save_folder = os.path.join(opt.model_path, opt.model_name)
+    opt.save_folder = os.path.join(opt.model_path, opt.ckpt_name)
     if not os.path.isdir(opt.save_folder):
         os.makedirs(opt.save_folder)
 
