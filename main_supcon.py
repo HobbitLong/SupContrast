@@ -204,6 +204,8 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     end = time.time()
     for idx, (images, labels) in enumerate(train_loader):
         data_time.update(time.time() - end)
+        if len(images) < opt.batch_size:
+            continue
         images = torch.cat([images[0], images[1], images[2], images[3]], dim=0)
         if torch.cuda.is_available():
             images = images.cuda(non_blocking=True)
