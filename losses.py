@@ -31,8 +31,6 @@ class SupConLoss(nn.Module):
         Returns:
             A loss scalar.
         """
-        print('[F]', features)
-
         device = (torch.device('cuda')
                   if features.is_cuda
                   else torch.device('cpu'))
@@ -53,7 +51,6 @@ class SupConLoss(nn.Module):
             if labels.shape[0] != batch_size:
                 raise ValueError('Num of labels does not match num of features')
             mask = torch.eq(labels, labels.T).float().to(device)
-            print('[M1]', mask.sum(1))
         else:
             mask = mask.float().to(device)
 
@@ -87,12 +84,10 @@ class SupConLoss(nn.Module):
             0
         )
         mask = mask * logits_mask
-        print('[M2]', logits_mask.sum(1))
-        print('[M3]', mask.sum(1))
 
         # compute log_prob
         exp_logits = torch.exp(logits) * logits_mask
-        log_prob = logits - torch.log(exp_logits.sum(1, keepdim=True))
+        log_prob = logits - torch.log(exp_logits.sum(1, keepdim=True) + 1e-9)
 
         # compute mean of log-likelihood over positive
         mean_log_prob_pos = (mask * log_prob).sum(1) / mask.sum(1)
@@ -101,5 +96,4 @@ class SupConLoss(nn.Module):
         loss = - (self.temperature / self.base_temperature) * mean_log_prob_pos
         loss = loss.view(anchor_count, batch_size).mean()
 
-        print('[L]', loss)
         return loss

@@ -144,22 +144,27 @@ def set_loader(opt):
     normalize = transforms.Normalize(mean=mean, std=std)
 
     train_transform = transforms.Compose([
-        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        normalize,
+    ])
+
+    train_transform_with_aug = transforms.Compose([
+        transforms.RandomHorizontalFlip(p=1.0),
         transforms.ToTensor(),
         normalize,
     ])
 
     if opt.dataset == 'cifar10':
         train_dataset = datasets.CIFAR10(root=opt.data_folder,
-                                         transform=TwoCropTransform(train_transform),
+                                         transform=TwoCropTransform(train_transform, train_transform_with_aug),
                                          download=True)
     elif opt.dataset == 'cifar100':
         train_dataset = datasets.CIFAR100(root=opt.data_folder,
-                                          transform=TwoCropTransform(train_transform),
+                                          transform=TwoCropTransform(train_transform, train_transform_with_aug),
                                           download=True)
     elif opt.dataset == 'path':
         train_dataset = datasets.ImageFolder(root=opt.data_folder,
-                                            transform=train_transform)
+                                            transform=TwoCropTransform(train_transform, train_transform_with_aug))
     else:
         raise ValueError(opt.dataset)
 
@@ -200,6 +205,7 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     end = time.time()
     for idx, (images, labels) in enumerate(train_loader):
         data_time.update(time.time() - end)
+        images = torch.cat([images[0], images[1]], dim=0)
         if torch.cuda.is_available():
             images = images.cuda(non_blocking=True)
             labels = labels.cuda(non_blocking=True)
@@ -210,7 +216,8 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
 
         # compute loss
         features = model(images)
-        features = features.unsqueeze(1)
+        f1, f2 = torch.split(features, [bsz, bsz], dim=0)
+        features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
         if opt.method == 'SupCon':
             loss = criterion(features, labels)
         elif opt.method == 'SimCLR':
