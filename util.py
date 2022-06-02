@@ -76,9 +76,8 @@ def warmup_learning_rate(args, epoch, batch_id, total_batches, optimizer):
 
 
 def set_optimizer(opt, model):
-    optimizer = optim.SGD(model.parameters(),
+    optimizer = optim.Adam(model.parameters(),
                           lr=opt.learning_rate,
-                          momentum=opt.momentum,
                           weight_decay=opt.weight_decay)
     return optimizer
 
