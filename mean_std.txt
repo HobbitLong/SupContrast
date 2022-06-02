@@ -1,0 +1,3 @@
+dataroot: /data/image/VGGFace2_SupContrast/imgs/train
+mean: [0.47046287 0.38566549 0.34544793]
+std: [0.3120461  0.27883396 0.27179433]

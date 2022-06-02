@@ -46,5 +46,6 @@ print(mean)
 print(std)
 
 with open(Path(args.output_dir) / 'mean_std.txt', 'w') as f:
+    f.write(f"dataroot: {args.dataroot}\n")
     f.write(f"mean: {mean}\n")
     f.write(f"std: {std}\n")
