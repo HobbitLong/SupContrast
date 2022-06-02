@@ -31,6 +31,8 @@ class SupConLoss(nn.Module):
         Returns:
             A loss scalar.
         """
+        print('[F]', features)
+
         device = (torch.device('cuda')
                   if features.is_cuda
                   else torch.device('cpu'))
@@ -51,6 +53,7 @@ class SupConLoss(nn.Module):
             if labels.shape[0] != batch_size:
                 raise ValueError('Num of labels does not match num of features')
             mask = torch.eq(labels, labels.T).float().to(device)
+            print('[M1]', mask.sum(1))
         else:
             mask = mask.float().to(device)
 
@@ -69,6 +72,7 @@ class SupConLoss(nn.Module):
         anchor_dot_contrast = torch.div(
             torch.matmul(anchor_feature, contrast_feature.T),
             self.temperature)
+
         # for numerical stability
         logits_max, _ = torch.max(anchor_dot_contrast, dim=1, keepdim=True)
         logits = anchor_dot_contrast - logits_max.detach()
@@ -83,6 +87,8 @@ class SupConLoss(nn.Module):
             0
         )
         mask = mask * logits_mask
+        print('[M2]', logits_mask.sum(1))
+        print('[M3]', mask.sum(1))
 
         # compute log_prob
         exp_logits = torch.exp(logits) * logits_mask
@@ -95,4 +101,5 @@ class SupConLoss(nn.Module):
         loss = - (self.temperature / self.base_temperature) * mean_log_prob_pos
         loss = loss.view(anchor_count, batch_size).mean()
 
+        print('[L]', loss)
         return loss

@@ -164,7 +164,7 @@ class LinearBatchNorm(nn.Module):
 
 class SupConResNet(nn.Module):
     """backbone + projection head"""
-    def __init__(self, name='resnet50', head='mlp', feat_dim=128):
+    def __init__(self, name='resnet50', head='mlp', feat_dim=512):
         super(SupConResNet, self).__init__()
         model_fun, dim_in = model_dict[name]
         self.encoder = model_fun()
@@ -172,9 +172,11 @@ class SupConResNet(nn.Module):
             self.head = nn.Linear(dim_in, feat_dim)
         elif head == 'mlp':
             self.head = nn.Sequential(
-                nn.Linear(dim_in, dim_in),
-                nn.ReLU(inplace=True),
-                nn.Linear(dim_in, feat_dim)
+                nn.Linear(dim_in, dim_in // 2),
+                nn.BatchNorm1d(dim_in // 2),
+                nn.LeakyReLU(negative_slope=0.2),
+                nn.Linear(dim_in // 2, feat_dim),
+                nn.BatchNorm1d(feat_dim),
             )
         else:
             raise NotImplementedError(
