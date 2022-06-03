@@ -65,6 +65,7 @@ def parse_option():
     parser.add_argument('--std', type=str, help='std of dataset in path in form of str tuple')
     parser.add_argument('--data_folder', type=str, default=None, help='path to custom dataset')
     parser.add_argument('--size', type=int, default=32, help='parameter for RandomResizedCrop')
+    parser.add_argument('--mask', action='store_true', help='mask input image')
 
     # method
     parser.add_argument('--method', type=str, default='SupCon',
@@ -185,7 +186,7 @@ def set_loader(opt):
                                           transform=train_transform,
                                           download=True)
     elif opt.dataset == 'path':
-        train_dataset = CustomDataset(root=opt.data_folder, transform=train_transform, img_per_id=opt.img_per_id)
+        train_dataset = CustomDataset(root=opt.data_folder, transform=train_transform, img_per_id=opt.img_per_id, masking=opt.masking)
     else:
         raise ValueError(opt.dataset)
 

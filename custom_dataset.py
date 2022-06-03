@@ -38,7 +38,7 @@ class CustomDataset(Dataset):
             img = cv2.imread(path)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             if self.masking:
-                seg = cv2.imread(path.replace('imgs', 'bisenet_mask'))
+                seg = cv2.imread(path.replace('imgs', 'segs'))
                 seg = cv2.cvtColor(seg, cv2.COLOR_BGR2RGB)
                 masks, mask_head, mask_background = seg2mask(seg)
                 img[mask_background[0]] = 0
