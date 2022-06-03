@@ -7,7 +7,7 @@ from segmentation import seg2mask
 
 
 class CustomDataset(Dataset):
-    def __init__(self, root, transform, IMG_PER_ID=4, masking=False):
+    def __init__(self, root, transform, img_per_id=4, masking=False):
         super().__init__()
 
         # dataset
@@ -19,9 +19,9 @@ class CustomDataset(Dataset):
         for id, id_dir in enumerate(self.id_paths):
             img_paths = [os.path.join(id_dir, file) for file in os.listdir(id_dir)]
             random.shuffle(img_paths) # inplace operation
-            for i in range(0, len(img_paths), IMG_PER_ID):
-                if i + IMG_PER_ID < len(img_paths):
-                    img_paths = img_paths[i : i + IMG_PER_ID]
+            for i in range(0, len(img_paths), img_per_id):
+                if i + img_per_id < len(img_paths):
+                    img_paths = img_paths[i : i + img_per_id]
                     item = (id, img_paths)
                     self.dataset.append(item)
 

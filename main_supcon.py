@@ -83,6 +83,10 @@ def parse_option():
                         help='warm-up for large batch training')
     parser.add_argument('--trial', type=str, default='0',
                         help='id for recording multiple runs')
+    parser.add_argument('--img_per_id', type=int, default=4,
+                        help='number of images per id')
+    parser.add_argument('--feat_dim', type=int, default=512,
+                        help='feature dimension')
 
     opt = parser.parse_args()
 
@@ -181,7 +185,7 @@ def set_loader(opt):
                                           transform=train_transform,
                                           download=True)
     elif opt.dataset == 'path':
-        train_dataset = CustomDataset(root=opt.data_folder, transform=train_transform)
+        train_dataset = CustomDataset(root=opt.data_folder, transform=train_transform, img_per_id=opt.img_per_id)
     else:
         raise ValueError(opt.dataset)
 
@@ -193,7 +197,7 @@ def set_loader(opt):
 
 
 def set_model(opt):
-    model = SupConResNet(name=opt.model)
+    model = SupConResNet(name=opt.model, feat_dim=opt.feat_dim)
     criterion = SupConLoss(temperature=opt.temp)
 
     # enable synchronized Batch Normalization
@@ -221,28 +225,27 @@ def train(train_loader, model, criterion, optimizer, epoch, opt, logger):
     end = time.time()
     for idx, (images, labels) in enumerate(train_loader):
         data_time.update(time.time() - end)
+
         images = torch.cat([images[0], images[1], images[2], images[3]], dim=0)
+        bsz = labels.shape[0]
 
         if torch.cuda.is_available():
             images = images.cuda(non_blocking=True)
             labels = labels.cuda(non_blocking=True)
-        bsz = labels.shape[0]
 
         # warm-up learning rate
         warmup_learning_rate(opt, epoch, idx, len(train_loader), optimizer)
 
         # compute loss
         features = model(images)
-        f1, f2, f3, f4 = torch.split(features, [4, 4, 4, 4], dim=0)
-        features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1), f3.unsqueeze(1), f4.unsqueeze(1)], dim=1)
+        features = features.view(bsz, opt.img_per_id, opt.feat_dim)
 
         if opt.method == 'SupCon':
             loss = criterion(features, labels)
         elif opt.method == 'SimCLR':
             loss = criterion(features)
         else:
-            raise ValueError('contrastive method not supported: {}'.
-                             format(opt.method))
+            raise ValueError('contrastive method not supported: {}'.format(opt.method))
 
         # update metric
         losses.update(loss.item(), bsz)
@@ -305,13 +308,12 @@ def main():
 
         # train for one epoch
         time1 = time.time()
-        loss = train(train_loader, model, criterion, optimizer, epoch, opt, logger)
+        train(train_loader, model, criterion, optimizer, epoch, opt, logger)
         time2 = time.time()
         print('epoch {}, total time {:.2f}'.format(epoch, time2 - time1))
 
         if epoch % opt.save_freq == 0:
-            save_file = os.path.join(
-                opt.save_folder, 'ckpt_epoch_{epoch}.pth'.format(epoch=epoch))
+            save_file = os.path.join(opt.save_folder, 'ckpt_epoch_{epoch}.pth'.format(epoch=epoch))
             save_model(model, optimizer, opt, epoch, save_file)
 
     # save the last model
