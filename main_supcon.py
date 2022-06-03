@@ -157,11 +157,11 @@ def set_loader(opt):
 
     if opt.dataset == 'cifar10':
         train_dataset = datasets.CIFAR10(root=opt.data_folder,
-                                         transform=TwoCropTransform(train_transform),
+                                         transform=train_transform,
                                          download=True)
     elif opt.dataset == 'cifar100':
         train_dataset = datasets.CIFAR100(root=opt.data_folder,
-                                          transform=TwoCropTransform(train_transform),
+                                          transform=train_transform,
                                           download=True)
     elif opt.dataset == 'path':
         train_dataset = CustomDataset(root=opt.data_folder, transform=train_transform)
@@ -170,7 +170,7 @@ def set_loader(opt):
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=opt.batch_size, shuffle=True,
-        num_workers=opt.num_workers, pin_memory=True)
+        num_workers=opt.num_workers, pin_memory=True, drop_last=True)
 
     return train_loader
 
@@ -204,9 +204,15 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     end = time.time()
     for idx, (images, labels) in enumerate(train_loader):
         data_time.update(time.time() - end)
-        if len(images) < opt.batch_size:
-            continue
         images = torch.cat([images[0], images[1], images[2], images[3]], dim=0)
+        
+        import cv2
+        print('[I]', images.shape)
+        cv2.imwrite('img0.png', cv2.cvtColor(images[0].permute(1, 2, 0).numpy()*255, cv2.COLOR_BGR2RGB))
+        cv2.imwrite('img1.png', cv2.cvtColor(images[1].permute(1, 2, 0).numpy()*255, cv2.COLOR_BGR2RGB))
+        cv2.imwrite('img2.png', cv2.cvtColor(images[2].permute(1, 2, 0).numpy()*255, cv2.COLOR_BGR2RGB))
+        cv2.imwrite('img3.png', cv2.cvtColor(images[3].permute(1, 2, 0).numpy()*255, cv2.COLOR_BGR2RGB))
+
         if torch.cuda.is_available():
             images = images.cuda(non_blocking=True)
             labels = labels.cuda(non_blocking=True)
