@@ -7,7 +7,7 @@ from segmentation import seg2mask
 
 
 class CustomDataset(Dataset):
-    def __init__(self, root, transform, IMG_PER_ID = 4):
+    def __init__(self, root, transform, IMG_PER_ID=4, masking=False):
         super().__init__()
 
         # dataset
@@ -27,6 +27,7 @@ class CustomDataset(Dataset):
 
         # transform
         self.transform = transform
+        self.masking = masking
         
     def __getitem__(self, index):
         id, img_paths = self.dataset[index]
@@ -36,10 +37,11 @@ class CustomDataset(Dataset):
         for path in img_paths:
             img = cv2.imread(path)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            seg = cv2.imread(path.replace('imgs', 'bisenet_mask'))
-            seg = cv2.cvtColor(seg, cv2.COLOR_BGR2RGB)
-            masks, mask_head, mask_background = seg2mask(seg)
-            img[mask_background[0]] = 0
+            if self.masking:
+                seg = cv2.imread(path.replace('imgs', 'bisenet_mask'))
+                seg = cv2.cvtColor(seg, cv2.COLOR_BGR2RGB)
+                masks, mask_head, mask_background = seg2mask(seg)
+                img[mask_background[0]] = 0
             img = self.transform(img)
             imgs.append(img)
         imgs = torch.stack(imgs)
