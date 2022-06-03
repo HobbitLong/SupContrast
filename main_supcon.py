@@ -186,7 +186,7 @@ def set_loader(opt):
                                           transform=train_transform,
                                           download=True)
     elif opt.dataset == 'path':
-        train_dataset = CustomDataset(root=opt.data_folder, transform=train_transform, img_per_id=opt.img_per_id, masking=opt.masking)
+        train_dataset = CustomDataset(root=opt.data_folder, transform=train_transform, img_per_id=opt.img_per_id, masking=opt.mask)
     else:
         raise ValueError(opt.dataset)
 
