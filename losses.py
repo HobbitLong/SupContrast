@@ -31,15 +31,11 @@ class SupConLoss(nn.Module):
         Returns:
             A loss scalar.
         """
+        assert len(features.shape) == 3
+
         device = (torch.device('cuda')
                   if features.is_cuda
                   else torch.device('cpu'))
-
-        if len(features.shape) < 3:
-            raise ValueError('`features` needs to be [bsz, n_views, ...],'
-                             'at least 3 dimensions are required')
-        if len(features.shape) > 3:
-            features = features.view(features.shape[0], features.shape[1], -1)
 
         # bsz
         batch_size = features.shape[0]
@@ -48,8 +44,8 @@ class SupConLoss(nn.Module):
 
         # [bsz, 1]
         labels = labels.contiguous().view(-1, 1)
-        if labels.shape[0] != batch_size:
-            raise ValueError('Num of labels does not match num of features')
+        assert labels.shape[0] == batch_size
+
         # [bsz, bsz]
         mask = torch.eq(labels, labels.T).float().to(device)        
 
@@ -83,9 +79,9 @@ class SupConLoss(nn.Module):
         # [1, 1, 0, 0]
         # [0, 0, 1, 1]
         # [0, 0, 1, 1]
-        mask = mask[:, None, :, None].repeat(1, anchor_count, 1, anchor_count).view(
-            contrast_count * anchor_count, -1)
- 
+        mask = mask[:, None, :, None].repeat(1, contrast_count, 1, contrast_count).view(
+            batch_size * contrast_count, -1)
+
         # mask-out self-contrast cases
         logits_mask = torch.scatter(
             torch.ones_like(mask),

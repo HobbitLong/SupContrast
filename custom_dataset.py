@@ -32,7 +32,7 @@ class CustomDataset(Dataset):
     def __getitem__(self, index):
         id, img_paths = self.dataset[index]
 
-        # [4, 3, 256, 256]
+        # [img_per_id, 3, 256, 256]
         imgs = []
         for path in img_paths:
             img = cv2.imread(path)

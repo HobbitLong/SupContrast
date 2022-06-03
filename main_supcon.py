@@ -227,7 +227,7 @@ def train(train_loader, model, criterion, optimizer, epoch, opt, logger):
     for idx, (images, labels) in enumerate(train_loader):
         data_time.update(time.time() - end)
 
-        images = torch.cat([images[0], images[1], images[2], images[3]], dim=0)
+        images = images.view(-1, images.shape[-3], images.shape[-2], images.shape[-1])
         bsz = labels.shape[0]
 
         if torch.cuda.is_available():
