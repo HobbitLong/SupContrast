@@ -42,8 +42,8 @@ for i in tqdm(range(numSamples)):
 
 std = np.sqrt(stdTemp/numSamples)
 
-print(mean)
-print(std)
+print('Mean:', mean)
+print('Standard deviation:', std)
 
 with open(Path(args.output_dir) / 'mean_std.txt', 'w') as f:
     f.write(f"dataroot: {args.dataroot}\n")

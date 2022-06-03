@@ -7,6 +7,7 @@ import time
 import math
 
 import tensorboard_logger as tb_logger
+import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
 from torchvision import transforms, datasets
@@ -134,6 +135,22 @@ def parse_option():
     return opt
 
 
+def denormalize(x, opt):
+    if opt.dataset == 'cifar10':
+        mean = (0.4914, 0.4822, 0.4465)
+        std = (0.2023, 0.1994, 0.2010)
+    elif opt.dataset == 'cifar100':
+        mean = (0.5071, 0.4867, 0.4408)
+        std = (0.2675, 0.2565, 0.2761)
+    elif opt.dataset == 'path':
+        mean = eval(opt.mean)
+        std = eval(opt.std)
+    else:
+        raise ValueError('dataset not supported: {}'.format(opt.dataset))
+    denormalize = transforms.Normalize(mean=-np.array(mean)/np.array(std), std=1/np.array(std))
+    return denormalize(x)
+
+
 def set_loader(opt):
     # construct data loader
     if opt.dataset == 'cifar10':
@@ -148,10 +165,10 @@ def set_loader(opt):
     else:
         raise ValueError('dataset not supported: {}'.format(opt.dataset))
     normalize = transforms.Normalize(mean=mean, std=std)
+    denormalize = transforms.Normalize(mean=-np.array(mean)/np.array(std), std=1/np.array(std))
 
     train_transform = transforms.Compose([
         transforms.ToPILImage(),
-        transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         normalize,
     ])
@@ -258,6 +275,13 @@ def train(train_loader, model, criterion, optimizer, epoch, opt, logger):
                    n_cos=n_cos))
             sys.stdout.flush()
 
+            step = (epoch - 1) * len(train_loader) + idx + 1
+            logger.log_value('train_loss', losses.val, step)
+            logger.log_value('p_cos', p_cos, step)
+            logger.log_value('n_cos', n_cos, step)
+            logger.log_value('learning_rate', optimizer.param_groups[0]['lr'], step)
+            logger.log_images('input_batch', denormalize(images, opt).cpu().numpy(), step)
+
     return losses.avg
 
 
@@ -285,10 +309,6 @@ def main():
         loss = train(train_loader, model, criterion, optimizer, epoch, opt, logger)
         time2 = time.time()
         print('epoch {}, total time {:.2f}'.format(epoch, time2 - time1))
-
-        # tensorboard logger
-        logger.log_value('loss', loss, epoch)
-        logger.log_value('learning_rate', optimizer.param_groups[0]['lr'], epoch)
 
         if epoch % opt.save_freq == 0:
             save_file = os.path.join(
