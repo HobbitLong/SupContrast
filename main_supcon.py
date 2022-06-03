@@ -165,7 +165,6 @@ def set_loader(opt):
     else:
         raise ValueError('dataset not supported: {}'.format(opt.dataset))
     normalize = transforms.Normalize(mean=mean, std=std)
-    denormalize = transforms.Normalize(mean=-np.array(mean)/np.array(std), std=1/np.array(std))
 
     train_transform = transforms.Compose([
         transforms.ToPILImage(),
