@@ -1,18 +1,14 @@
 import os
 import random
 import cv2
-import numpy as np
 import torch
 from torch.utils.data import Dataset
-from util import seg2mask
+from segmentation import seg2mask
 
 
 class CustomDataset(Dataset):
-    def __init__(self, root, transform):
+    def __init__(self, root, transform, IMG_PER_ID = 4):
         super().__init__()
-
-        # constant
-        self.IMG_PER_ID = 4
 
         # dataset
         self.dataset = []
@@ -23,9 +19,9 @@ class CustomDataset(Dataset):
         for id, id_dir in enumerate(self.id_paths):
             img_paths = [os.path.join(id_dir, file) for file in os.listdir(id_dir)]
             random.shuffle(img_paths) # inplace operation
-            for i in range(0, len(img_paths), self.IMG_PER_ID):
-                if i + self.IMG_PER_ID < len(img_paths):
-                    img_paths = img_paths[i : i + self.IMG_PER_ID]
+            for i in range(0, len(img_paths), IMG_PER_ID):
+                if i + IMG_PER_ID < len(img_paths):
+                    img_paths = img_paths[i : i + IMG_PER_ID]
                     item = (id, img_paths)
                     self.dataset.append(item)
 
@@ -35,21 +31,19 @@ class CustomDataset(Dataset):
     def __getitem__(self, index):
         id, img_paths = self.dataset[index]
 
-        # image
         # [4, 3, 256, 256]
         imgs = []
         for path in img_paths:
             img = cv2.imread(path)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            # seg = cv2.imread(path.replace('imgs', 'bisenet_mask'))
-            # seg = cv2.cvtColor(seg, cv2.COLOR_BGR2RGB)
-            # masks, mask_head, mask_background = seg2mask(seg)
-            # img[mask_background[0]] = 0
+            seg = cv2.imread(path.replace('imgs', 'bisenet_mask'))
+            seg = cv2.cvtColor(seg, cv2.COLOR_BGR2RGB)
+            masks, mask_head, mask_background = seg2mask(seg)
+            img[mask_background[0]] = 0
             img = self.transform(img)
             imgs.append(img)
         imgs = torch.stack(imgs)
 
-        # label
         labels = torch.tensor(id)
 
         return imgs, labels

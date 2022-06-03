@@ -17,6 +17,7 @@ from util import set_optimizer, save_model
 from custom_dataset import CustomDataset
 from networks.resnet_big import SupConResNet
 from losses import SupConLoss
+from metrics import cos_sim
 
 try:
     import apex
@@ -193,7 +194,7 @@ def set_model(opt):
     return model, criterion
 
 
-def train(train_loader, model, criterion, optimizer, epoch, opt):
+def train(train_loader, model, criterion, optimizer, epoch, opt, logger):
     """one epoch training"""
     model.train()
 
@@ -205,13 +206,6 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     for idx, (images, labels) in enumerate(train_loader):
         data_time.update(time.time() - end)
         images = torch.cat([images[0], images[1], images[2], images[3]], dim=0)
-        
-        import cv2
-        print('[I]', images.shape)
-        cv2.imwrite('img0.png', cv2.cvtColor(images[0].permute(1, 2, 0).numpy()*255, cv2.COLOR_BGR2RGB))
-        cv2.imwrite('img1.png', cv2.cvtColor(images[1].permute(1, 2, 0).numpy()*255, cv2.COLOR_BGR2RGB))
-        cv2.imwrite('img2.png', cv2.cvtColor(images[2].permute(1, 2, 0).numpy()*255, cv2.COLOR_BGR2RGB))
-        cv2.imwrite('img3.png', cv2.cvtColor(images[3].permute(1, 2, 0).numpy()*255, cv2.COLOR_BGR2RGB))
 
         if torch.cuda.is_available():
             images = images.cuda(non_blocking=True)
@@ -225,7 +219,7 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
         features = model(images)
         f1, f2, f3, f4 = torch.split(features, [4, 4, 4, 4], dim=0)
         features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1), f3.unsqueeze(1), f4.unsqueeze(1)], dim=1)
-        
+
         if opt.method == 'SupCon':
             loss = criterion(features, labels)
         elif opt.method == 'SimCLR':
@@ -246,14 +240,22 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
         batch_time.update(time.time() - end)
         end = time.time()
 
-        # print info
+        # monitoring
         if (idx + 1) % opt.print_freq == 0:
+            p_cos = cos_sim(features[0][0], features[0][1]).item()
+            n_cos = cos_sim(features[0][0], features[1][0]).item()
+
             print('Train: [{0}][{1}/{2}]\t'
                   'BT {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   'DT {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                  'loss {loss.val:.3f} ({loss.avg:.3f})'.format(
+                  'loss {loss.val:.3f} ({loss.avg:.3f})\t'
+                  'p_cos {p_cos:.3f}\t'
+                  'n_cos {n_cos:.3f}'
+                  .format(
                    epoch, idx + 1, len(train_loader), batch_time=batch_time,
-                   data_time=data_time, loss=losses))
+                   data_time=data_time, loss=losses,
+                   p_cos=p_cos,
+                   n_cos=n_cos))
             sys.stdout.flush()
 
     return losses.avg
@@ -280,7 +282,7 @@ def main():
 
         # train for one epoch
         time1 = time.time()
-        loss = train(train_loader, model, criterion, optimizer, epoch, opt)
+        loss = train(train_loader, model, criterion, optimizer, epoch, opt, logger)
         time2 = time.time()
         print('epoch {}, total time {:.2f}'.format(epoch, time2 - time1))
 
@@ -294,8 +296,7 @@ def main():
             save_model(model, optimizer, opt, epoch, save_file)
 
     # save the last model
-    save_file = os.path.join(
-        opt.save_folder, 'last.pth')
+    save_file = os.path.join(opt.save_folder, 'last.pth')
     save_model(model, optimizer, opt, opt.epochs, save_file)
 
 
