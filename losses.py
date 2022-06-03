@@ -41,25 +41,19 @@ class SupConLoss(nn.Module):
         if len(features.shape) > 3:
             features = features.view(features.shape[0], features.shape[1], -1)
 
+        # bsz
         batch_size = features.shape[0]
-        if labels is not None and mask is not None:
-            raise ValueError('Cannot define both `labels` and `mask`')
-        elif labels is None and mask is None:
-            mask = torch.eye(batch_size, dtype=torch.float32).to(device)
-        elif labels is not None:
-            # [bsz, 1]
-            labels = labels.contiguous().view(-1, 1)
-            if labels.shape[0] != batch_size:
-                raise ValueError('Num of labels does not match num of features')
-            # [bsz, bsz]
-            mask = torch.eq(labels, labels.T).float().to(device)
-        else:
-            mask = mask.float().to(device)
         # n_views
         contrast_count = features.shape[1]
 
+        # [bsz, 1]
+        labels = labels.contiguous().view(-1, 1)
+        if labels.shape[0] != batch_size:
+            raise ValueError('Num of labels does not match num of features')
+        # [bsz, bsz]
+        mask = torch.eq(labels, labels.T).float().to(device)        
+
         # [bsz x n_views, -1]
-        # contrast_feature = torch.cat(torch.unbind(features, dim=1), dim=0)
         contrast_feature = features.reshape(batch_size * contrast_count, -1)
         
         if self.contrast_mode == 'one':
@@ -91,7 +85,6 @@ class SupConLoss(nn.Module):
         # [0, 0, 1, 1]
         mask = mask[:, None, :, None].repeat(1, anchor_count, 1, anchor_count).view(
             contrast_count * anchor_count, -1)
-        # mask = mask.repeat(anchor_count, contrast_count)
  
         # mask-out self-contrast cases
         logits_mask = torch.scatter(
