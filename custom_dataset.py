@@ -39,9 +39,10 @@ class CustomDataset(Dataset):
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             if self.masking:
                 seg = cv2.imread(path.replace('imgs', 'segs'))
+                seg = cv2.resize(seg, dsize=(256, 256), interpolation=cv2.INTER_NEAREST)
                 seg = cv2.cvtColor(seg, cv2.COLOR_BGR2RGB)
                 masks, mask_head, mask_background = seg2mask(seg)
-                img[mask_background[0]] = 0
+                img[(1 - mask_head[0]).astype(bool)] = 0
             img = self.transform(img)
             imgs.append(img)
         imgs = torch.stack(imgs)
