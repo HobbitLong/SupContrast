@@ -1,6 +1,9 @@
 tmp*.py
 .idea/
 
+# dataset
+datasets/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
