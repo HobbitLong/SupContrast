@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+from util import seg2mask
 
 
 class CustomDataset(Dataset):
@@ -34,15 +35,21 @@ class CustomDataset(Dataset):
     def __getitem__(self, index):
         id, img_paths = self.dataset[index]
 
+        # image
         # [4, 3, 256, 256]
         imgs = []
         for path in img_paths:
             img = cv2.imread(path)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            seg = cv2.imread(path.replace('imgs', 'bisenet_mask'))
+            seg = cv2.cvtColor(seg, cv2.COLOR_BGR2RGB)
+            masks, mask_head, mask_background = seg2mask(seg)
+            img[mask_background[0]] = 0
             img = self.transform(img)
             imgs.append(img)
         imgs = torch.stack(imgs)
 
+        # label
         labels = torch.tensor(id)
 
         return imgs, labels
