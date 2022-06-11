@@ -174,6 +174,7 @@ def set_loader(opt):
     train_transform = transforms.Compose([
         transforms.ToPILImage(),
         transforms.ToTensor(),
+        transforms.ColorJitter(brightness=0),
         normalize,
     ])
 
