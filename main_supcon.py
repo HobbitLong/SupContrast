@@ -5,7 +5,7 @@ import sys
 import argparse
 import time
 import math
-
+import timm
 import tensorboard_logger as tb_logger
 import torch
 import torch.backends.cudnn as cudnn
@@ -14,7 +14,9 @@ from torchvision import transforms, datasets
 from util import TwoCropTransform, AverageMeter
 from util import adjust_learning_rate, warmup_learning_rate
 from util import set_optimizer, save_model
-from networks.resnet_big import SupConResNet
+from timm.data import resolve_data_config
+from timm.data.transforms_factory import create_transform
+from networks.vit import SupConVit
 from losses import SupConLoss
 
 try:
@@ -141,18 +143,9 @@ def set_loader(opt):
         std = eval(opt.std)
     else:
         raise ValueError('dataset not supported: {}'.format(opt.dataset))
-    normalize = transforms.Normalize(mean=mean, std=std)
 
-    train_transform = transforms.Compose([
-        transforms.RandomResizedCrop(size=opt.size, scale=(0.2, 1.)),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomApply([
-            transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)
-        ], p=0.8),
-        transforms.RandomGrayscale(p=0.2),
-        transforms.ToTensor(),
-        normalize,
-    ])
+    config = resolve_data_config({}, model=timm.create_model("vit_base_patch16_224", pretrained=True, num_classes=0))
+    train_transform = create_transform(**config, is_training=True)
 
     if opt.dataset == 'cifar10':
         train_dataset = datasets.CIFAR10(root=opt.data_folder,
@@ -177,7 +170,7 @@ def set_loader(opt):
 
 
 def set_model(opt):
-    model = SupConResNet(name=opt.model)
+    model = SupConVit(name=opt.model)
     criterion = SupConLoss(temperature=opt.temp)
 
     # enable synchronized Batch Normalization
