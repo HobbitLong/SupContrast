@@ -9,7 +9,7 @@ class SupConVit(nn.Module):
     def __init__(self, name='', head='mlp', feat_dim=128):
         super(SupConVit, self).__init__()
         dim_in = 768
-        self.encoder = timm.create_model("vit_base_patch16_224", pretrained=True, num_classes=0)
+        self.encoder = timm.create_model("vit_base_patch16_224", num_classes=0)
         if head == 'linear':
             self.head = nn.Linear(dim_in, feat_dim)
         elif head == 'mlp':
@@ -26,3 +26,6 @@ class SupConVit(nn.Module):
         feat = self.encoder(x)
         feat = F.normalize(self.head(feat), dim=1)
         return feat
+
+    def state_dict(self):
+        return {k.replace("module.", ""): v for k, v in self.encoder.state_dict().items()}

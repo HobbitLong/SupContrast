@@ -106,7 +106,7 @@ def parse_option():
         opt.model_name = '{}_cosine'.format(opt.model_name)
 
     # warm-up for large-batch training,
-    if opt.batch_size > 256:
+    if opt.batch_size >= 256:
         opt.warm = True
     if opt.warm:
         opt.model_name = '{}_warm'.format(opt.model_name)
@@ -145,6 +145,8 @@ def set_loader(opt):
         raise ValueError('dataset not supported: {}'.format(opt.dataset))
 
     config = resolve_data_config({}, model=timm.create_model("vit_base_patch16_224", pretrained=True, num_classes=0))
+    config['std'] = std
+    config['mean'] = mean
     train_transform = create_transform(**config, is_training=True)
 
     if opt.dataset == 'cifar10':
