@@ -141,5 +141,5 @@ class Question4Dataset(BaseQuestionLoader):
         samples = [torch.squeeze(torch.stack(samples1), dim=0),
                    torch.squeeze(torch.stack(samples2), dim=0)]
 
-        return samples, torch.tensor([1, 1, 1, 1, 1, 1, 1,
+        return samples, torch.tensor([1, 1, 1, 1, 1,
                                       2, 3, 4], dtype=int)
