@@ -160,13 +160,13 @@ def set_loader(opt):
                                           download=True)
     elif opt.dataset == 'path':
         train_dataset = [(Question1Dataset(root=f'{opt.data_folder}/question1',
-                                          transform=TwoCropTransform(train_transform)), 42),
+                                          transform=TwoCropTransform(train_transform)), 30),
                          (Question2Dataset(root=f'{opt.data_folder}/question2',
-                                          transform=TwoCropTransform(train_transform)), 85),
+                                          transform=TwoCropTransform(train_transform)), 60),
                          (Question3Dataset(root=f'{opt.data_folder}/question3',
-                                          transform=TwoCropTransform(train_transform)), 42),
+                                          transform=TwoCropTransform(train_transform)), 30),
                          (Question4Dataset(root=f'{opt.data_folder}/question4',
-                                          transform=TwoCropTransform(train_transform)), 36),
+                                          transform=TwoCropTransform(train_transform)), 26),
                          ]
     else:
         raise ValueError(opt.dataset)
@@ -209,8 +209,9 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
 
     end = time.time()
     idx = 0
+    from random import shuffle
+    shuffle(train_loader)
     for loader in train_loader:
-
         for images in loader:
             num_cats = images[0].shape[0]
             num_pos = images[0].shape[1]
