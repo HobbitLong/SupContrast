@@ -209,9 +209,15 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
 
     end = time.time()
     for loader in train_loader:
-        for idx, (images, labels) in enumerate(loader):
+        idx = 0
+        for (images, labels) in loader:
             images = [torch.squeeze(images[0]), torch.squeeze(images[0])]
             labels = torch.squeeze(labels)
+            if labels.shape[0] != images[0].shape[0]:
+                print('Skipping question')
+                continue
+            else:
+                idx += 1
             data_time.update(time.time() - end)
 
             images = torch.cat([images[0], images[1]], dim=0)
