@@ -12,7 +12,7 @@ class SupConVit(nn.Module):
 
     def forward(self, x):
         feat = self.encoder(x)
-        feat = F.normalize(self.head(feat), dim=1)
+        feat = F.normalize(feat, dim=1)
         return feat
 
     def state_dict(self):
