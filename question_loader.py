@@ -136,12 +136,9 @@ class Question4Dataset(BaseQuestionLoader):
 
         for answer in info['Answers']:
             if answer['group_id'] in info["correct_answer_group_ID"]:
-                print("here")
                 positive_samples = positive_samples + answer['images']
             else:
                 negative_examples = negative_examples + answer['images']
-        if len(positive_samples) == 7:
-            raise Exception()
 
         samples1, samples2 = [], []
         for im in positive_samples:
