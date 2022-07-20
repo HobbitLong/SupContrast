@@ -11,6 +11,7 @@ import torch
 import torch.backends.cudnn as cudnn
 from torchvision import transforms, datasets
 
+from question_loader import Question1Dataset
 from util import TwoCropTransform, AverageMeter
 from util import adjust_learning_rate, warmup_learning_rate
 from util import set_optimizer, save_model
@@ -158,14 +159,14 @@ def set_loader(opt):
                                           transform=TwoCropTransform(train_transform),
                                           download=True)
     elif opt.dataset == 'path':
-        train_dataset = datasets.ImageFolder(root=opt.data_folder,
-                                            transform=TwoCropTransform(train_transform))
+        train_dataset = Question1Dataset(root=opt.data_folder,
+                                         transform=TwoCropTransform(train_transform))
     else:
         raise ValueError(opt.dataset)
 
     train_sampler = None
     train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=opt.batch_size, shuffle=(train_sampler is None),
+        train_dataset, batch_size=1, shuffle=(train_sampler is None),
         num_workers=opt.num_workers, pin_memory=True, sampler=train_sampler)
 
     return train_loader
@@ -199,6 +200,8 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
 
     end = time.time()
     for idx, (images, labels) in enumerate(train_loader):
+        images = [torch.squeeze(images[0]), torch.squeeze(images[0])]
+        labels = torch.squeeze(labels)
         data_time.update(time.time() - end)
 
         images = torch.cat([images[0], images[1]], dim=0)
