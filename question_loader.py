@@ -136,12 +136,17 @@ class Question4Dataset(BaseQuestionLoader):
 
         for answer in info['Answers']:
             if answer['group_id'] in info["correct_answer_group_ID"]:
+                print("here")
                 positive_samples = positive_samples + answer['images']
             else:
                 negative_examples = negative_examples + answer['images']
+        if len(positive_samples) == 7:
+            raise Exception()
 
         samples1, samples2 = [], []
         for im in positive_samples:
+            print(dir_name)
+            print(im['image_url'])
             image = Image.open(os.path.join(
                 self.root, dir_name, im['image_url']
             )).convert('RGB')
@@ -150,7 +155,7 @@ class Question4Dataset(BaseQuestionLoader):
             samples2.append(sample2)
         samples = [torch.squeeze(torch.stack(samples1), dim=0),
                    torch.squeeze(torch.stack(samples2), dim=0)]
-        if samples[0].shape[0] != 7:
+        if samples[0].shape[0] != 5:
             shutil.rmtree(os.path.join(self.root, dir_name))
             print(f"removed {os.path.join(self.root, dir_name)}")
 
