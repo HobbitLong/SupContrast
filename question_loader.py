@@ -47,7 +47,7 @@ class Question1Dataset(BaseQuestionLoader):
         negative_examples, = [answer['images'] for answer in info['Answers']
                               if answer['group_id'] != info["correct_answer_group_ID"][0]]
         samples1, samples2 = [], []
-        for im in question_image + positive_examples + negative_examples:
+        for im in question_image + positive_examples:
             image = Image.open(os.path.join(
                 self.root, dir_name, im['image_url']
             )).convert('RGB')
@@ -57,8 +57,7 @@ class Question1Dataset(BaseQuestionLoader):
         samples = [torch.squeeze(torch.stack(samples1), dim=0),
                    torch.squeeze(torch.stack(samples2), dim=0)]
 
-        return samples, torch.tensor([1, 1, 1, 1, 2, 3, 4], dtype=int)
-
+        return samples
 
 class Question2Dataset(BaseQuestionLoader):
 
@@ -69,7 +68,7 @@ class Question2Dataset(BaseQuestionLoader):
         question_image = info['Questions'][0]['images']
         answer_images = info['Answers'][0]['images']
         samples1, samples2 = [], []
-        for im in question_image + answer_images:
+        for im in question_image:
             image = Image.open(os.path.join(
                 self.root, dir_name, im['image_url']
             )).convert('RGB')
@@ -79,7 +78,7 @@ class Question2Dataset(BaseQuestionLoader):
         samples = [torch.squeeze(torch.stack(samples1), dim=0),
                    torch.squeeze(torch.stack(samples2), dim=0)]
 
-        return samples, torch.tensor([1, 1, 1, 1 if info["is_correct"] else 2], dtype=int)
+        return samples
 
 
 class Question3Dataset(BaseQuestionLoader):
@@ -101,7 +100,7 @@ class Question3Dataset(BaseQuestionLoader):
                 negative_examples = negative_examples + answer['images']
 
         samples1, samples2 = [], []
-        for im in positive_samples + negative_examples:
+        for im in positive_samples:
             image = Image.open(os.path.join(
                 self.root, dir_name, im['image_url']
             )).convert('RGB')
@@ -111,8 +110,7 @@ class Question3Dataset(BaseQuestionLoader):
         samples = [torch.squeeze(torch.stack(samples1), dim=0),
                    torch.squeeze(torch.stack(samples2), dim=0)]
 
-        return samples, torch.tensor([1, 1, 1, 1, 1, 1,
-                                      2, 3, 4, 5, 6, 7, 8, 9, 10], dtype=int)
+        return samples
 
 
 class Question4Dataset(BaseQuestionLoader):
@@ -131,7 +129,7 @@ class Question4Dataset(BaseQuestionLoader):
                 negative_examples = negative_examples + answer['images']
 
         samples1, samples2 = [], []
-        for im in positive_samples + negative_examples:
+        for im in positive_samples:
             image = Image.open(os.path.join(
                 self.root, dir_name, im['image_url']
             )).convert('RGB')
@@ -141,5 +139,4 @@ class Question4Dataset(BaseQuestionLoader):
         samples = [torch.squeeze(torch.stack(samples1), dim=0),
                    torch.squeeze(torch.stack(samples2), dim=0)]
 
-        return samples, torch.tensor([1, 1, 1, 1, 1,
-                                      2, 3, 4], dtype=int)
+        return samples

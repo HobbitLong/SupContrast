@@ -159,23 +159,23 @@ def set_loader(opt):
                                           transform=TwoCropTransform(train_transform),
                                           download=True)
     elif opt.dataset == 'path':
-        train_dataset = [Question1Dataset(root=f'{opt.data_folder}/question1',
-                                          transform=TwoCropTransform(train_transform)),
-                         Question2Dataset(root=f'{opt.data_folder}/question2',
-                                          transform=TwoCropTransform(train_transform)),
-                         Question3Dataset(root=f'{opt.data_folder}/question3',
-                                          transform=TwoCropTransform(train_transform)),
-                         Question4Dataset(root=f'{opt.data_folder}/question4',
-                                          transform=TwoCropTransform(train_transform)),
+        train_dataset = [(Question1Dataset(root=f'{opt.data_folder}/question1',
+                                          transform=TwoCropTransform(train_transform)), 42),
+                         (Question2Dataset(root=f'{opt.data_folder}/question2',
+                                          transform=TwoCropTransform(train_transform)), 85),
+                         (Question3Dataset(root=f'{opt.data_folder}/question3',
+                                          transform=TwoCropTransform(train_transform)), 42),
+                         (Question4Dataset(root=f'{opt.data_folder}/question4',
+                                          transform=TwoCropTransform(train_transform)), 36),
                          ]
     else:
         raise ValueError(opt.dataset)
 
     train_sampler = None
     train_loaders = []
-    for dataset in train_dataset:
+    for dataset, batch_size in train_dataset:
         train_loaders.append(torch.utils.data.DataLoader(
-            dataset, batch_size=1, shuffle=(train_sampler is None),
+            dataset, batch_size=50, shuffle=(train_sampler is None),
             num_workers=opt.num_workers, pin_memory=True, sampler=train_sampler))
 
     return train_loaders
@@ -210,9 +210,16 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     end = time.time()
     for loader in train_loader:
         idx = 0
-        for (images, labels) in loader:
-            images = [torch.squeeze(images[0]), torch.squeeze(images[0])]
-            labels = torch.squeeze(labels)
+        for images in loader:
+            num_cats = images[0].shape[0]
+            num_pos = images[0].shape[1]
+            labels = []
+            for i in range(num_cats):
+                labels = labels + [i + 1] * num_pos
+            labels = torch.tensor(labels, dtype=int)
+            images = [images[0].reshape([images[0].shape[0] * images[0].shape[1],  *images[0].shape[2:]]),
+                      images[1].reshape([images[0].shape[0] * images[0].shape[1],  *images[0].shape[2:]])]
+
             if labels.shape[0] != images[0].shape[0]:
                 print('Skipping question')
                 continue
