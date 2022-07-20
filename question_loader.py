@@ -145,8 +145,6 @@ class Question4Dataset(BaseQuestionLoader):
 
         samples1, samples2 = [], []
         for im in positive_samples:
-            print(dir_name)
-            print(im['image_url'])
             image = Image.open(os.path.join(
                 self.root, dir_name, im['image_url']
             )).convert('RGB')

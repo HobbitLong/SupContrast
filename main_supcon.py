@@ -160,13 +160,13 @@ def set_loader(opt):
                                           download=True)
     elif opt.dataset == 'path':
         train_dataset = [(Question1Dataset(root=f'{opt.data_folder}/question1',
-                                          transform=TwoCropTransform(train_transform)), 30),
+                                          transform=TwoCropTransform(train_transform)), 40),
                          (Question2Dataset(root=f'{opt.data_folder}/question2',
-                                          transform=TwoCropTransform(train_transform)), 60),
+                                          transform=TwoCropTransform(train_transform)), 80),
                          (Question3Dataset(root=f'{opt.data_folder}/question3',
-                                          transform=TwoCropTransform(train_transform)), 30),
+                                          transform=TwoCropTransform(train_transform)), 40),
                          (Question4Dataset(root=f'{opt.data_folder}/question4',
-                                          transform=TwoCropTransform(train_transform)), 26),
+                                          transform=TwoCropTransform(train_transform)), 36),
                          ]
     else:
         raise ValueError(opt.dataset)
@@ -175,7 +175,7 @@ def set_loader(opt):
     train_loaders = []
     for dataset, batch_size in train_dataset:
         train_loaders.append(torch.utils.data.DataLoader(
-            dataset, batch_size=50, shuffle=(train_sampler is None),
+            dataset, batch_size=batch_size, shuffle=(train_sampler is None),
             num_workers=opt.num_workers, pin_memory=True, sampler=train_sampler))
 
     return train_loaders
