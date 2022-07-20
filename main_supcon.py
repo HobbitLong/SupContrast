@@ -208,8 +208,9 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     losses = AverageMeter()
 
     end = time.time()
+    idx = 0
     for loader in train_loader:
-        idx = 0
+
         for images in loader:
             num_cats = images[0].shape[0]
             num_pos = images[0].shape[1]
@@ -221,7 +222,7 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
                       images[1].reshape([images[0].shape[0] * images[0].shape[1],  *images[0].shape[2:]])]
 
             if labels.shape[0] != images[0].shape[0]:
-                print('Skipping question')
+                print(f'Skipping question {labels.shape[0]} != {images[0].shape[0]}')
                 continue
             else:
                 idx += 1
