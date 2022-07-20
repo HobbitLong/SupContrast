@@ -11,7 +11,7 @@ import torch
 import torch.backends.cudnn as cudnn
 from torchvision import transforms, datasets
 
-from question_loader import Question1Dataset
+from question_loader import Question1Dataset, Question2Dataset, Question3Dataset, Question4Dataset
 from util import TwoCropTransform, AverageMeter
 from util import adjust_learning_rate, warmup_learning_rate
 from util import set_optimizer, save_model
@@ -159,17 +159,26 @@ def set_loader(opt):
                                           transform=TwoCropTransform(train_transform),
                                           download=True)
     elif opt.dataset == 'path':
-        train_dataset = Question1Dataset(root=opt.data_folder,
-                                         transform=TwoCropTransform(train_transform))
+        train_dataset = [Question1Dataset(root=f'{opt.data_folder}/question1',
+                                          transform=TwoCropTransform(train_transform)),
+                         Question2Dataset(root=f'{opt.data_folder}/question2',
+                                          transform=TwoCropTransform(train_transform)),
+                         Question3Dataset(root=f'{opt.data_folder}/question3',
+                                          transform=TwoCropTransform(train_transform)),
+                         Question4Dataset(root=f'{opt.data_folder}/question4',
+                                          transform=TwoCropTransform(train_transform)),
+                         ]
     else:
         raise ValueError(opt.dataset)
 
     train_sampler = None
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=1, shuffle=(train_sampler is None),
-        num_workers=opt.num_workers, pin_memory=True, sampler=train_sampler)
+    train_loaders = []
+    for dataset in train_dataset:
+        train_loaders.append(torch.utils.data.DataLoader(
+            dataset, batch_size=1, shuffle=(train_sampler is None),
+            num_workers=opt.num_workers, pin_memory=True, sampler=train_sampler))
 
-    return train_loader
+    return train_loaders
 
 
 def set_model(opt):
@@ -199,53 +208,54 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     losses = AverageMeter()
 
     end = time.time()
-    for idx, (images, labels) in enumerate(train_loader):
-        images = [torch.squeeze(images[0]), torch.squeeze(images[0])]
-        labels = torch.squeeze(labels)
-        data_time.update(time.time() - end)
+    for loader in train_loader:
+        for idx, (images, labels) in enumerate(loader):
+            images = [torch.squeeze(images[0]), torch.squeeze(images[0])]
+            labels = torch.squeeze(labels)
+            data_time.update(time.time() - end)
 
-        images = torch.cat([images[0], images[1]], dim=0)
-        if torch.cuda.is_available():
-            images = images.cuda(non_blocking=True)
-            labels = labels.cuda(non_blocking=True)
-        bsz = labels.shape[0]
+            images = torch.cat([images[0], images[1]], dim=0)
+            if torch.cuda.is_available():
+                images = images.cuda(non_blocking=True)
+                labels = labels.cuda(non_blocking=True)
+            bsz = labels.shape[0]
 
-        # warm-up learning rate
-        warmup_learning_rate(opt, epoch, idx, len(train_loader), optimizer)
+            # warm-up learning rate
+            warmup_learning_rate(opt, epoch, idx, len(train_loader), optimizer)
 
-        # compute loss
-        features = model(images)
-        f1, f2 = torch.split(features, [bsz, bsz], dim=0)
-        features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
-        if opt.method == 'SupCon':
-            loss = criterion(features, labels)
-        elif opt.method == 'SimCLR':
-            loss = criterion(features)
-        else:
-            raise ValueError('contrastive method not supported: {}'.
-                             format(opt.method))
+            # compute loss
+            features = model(images)
+            f1, f2 = torch.split(features, [bsz, bsz], dim=0)
+            features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
+            if opt.method == 'SupCon':
+                loss = criterion(features, labels)
+            elif opt.method == 'SimCLR':
+                loss = criterion(features)
+            else:
+                raise ValueError('contrastive method not supported: {}'.
+                                 format(opt.method))
 
-        # update metric
-        losses.update(loss.item(), bsz)
+            # update metric
+            losses.update(loss.item(), bsz)
 
-        # SGD
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+            # SGD
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-        # measure elapsed time
-        batch_time.update(time.time() - end)
-        end = time.time()
+            # measure elapsed time
+            batch_time.update(time.time() - end)
+            end = time.time()
 
-        # print info
-        if (idx + 1) % opt.print_freq == 0:
-            print('Train: [{0}][{1}/{2}]\t'
-                  'BT {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                  'DT {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                  'loss {loss.val:.3f} ({loss.avg:.3f})'.format(
-                   epoch, idx + 1, len(train_loader), batch_time=batch_time,
-                   data_time=data_time, loss=losses))
-            sys.stdout.flush()
+            # print info
+            if (idx + 1) % opt.print_freq == 0:
+                print('Train: [{0}][{1}/{2}]\t'
+                      'BT {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                      'DT {data_time.val:.3f} ({data_time.avg:.3f})\t'
+                      'loss {loss.val:.3f} ({loss.avg:.3f})'.format(
+                       epoch, idx + 1, len(train_loader), batch_time=batch_time,
+                       data_time=data_time, loss=losses))
+                sys.stdout.flush()
 
     return losses.avg
 
