@@ -11,6 +11,7 @@ import torch
 import torch.backends.cudnn as cudnn
 from torchvision import transforms, datasets
 
+from question_loader import Question1Dataset, Question2Dataset, Question3Dataset, Question4Dataset
 from util import TwoCropTransform, AverageMeter
 from util import adjust_learning_rate, warmup_learning_rate
 from util import set_optimizer, save_model
@@ -158,17 +159,26 @@ def set_loader(opt):
                                           transform=TwoCropTransform(train_transform),
                                           download=True)
     elif opt.dataset == 'path':
-        train_dataset = datasets.ImageFolder(root=opt.data_folder,
-                                            transform=TwoCropTransform(train_transform))
+        train_dataset = [(Question1Dataset(root=f'{opt.data_folder}/question1',
+                                           transform=TwoCropTransform(train_transform)), opt.batch_size // 6),
+                         (Question2Dataset(root=f'{opt.data_folder}/question2',
+                                           transform=TwoCropTransform(train_transform)), opt.batch_size // 3),
+                         (Question3Dataset(root=f'{opt.data_folder}/question3',
+                                           transform=TwoCropTransform(train_transform)), opt.batch_size // 6),
+                         (Question4Dataset(root=f'{opt.data_folder}/question4',
+                                           transform=TwoCropTransform(train_transform)), opt.batch_size // 5),
+                         ]
     else:
         raise ValueError(opt.dataset)
 
     train_sampler = None
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=opt.batch_size, shuffle=(train_sampler is None),
-        num_workers=opt.num_workers, pin_memory=True, sampler=train_sampler)
+    train_loaders = []
+    for dataset, batch_size in train_dataset:
+        train_loaders.append(torch.utils.data.DataLoader(
+            dataset, batch_size=batch_size, shuffle=(train_sampler is None),
+            num_workers=opt.num_workers, pin_memory=True, sampler=train_sampler))
 
-    return train_loader
+    return train_loaders
 
 
 def set_model(opt):
@@ -198,51 +208,71 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     losses = AverageMeter()
 
     end = time.time()
-    for idx, (images, labels) in enumerate(train_loader):
-        data_time.update(time.time() - end)
+    idx = 0
+    from random import shuffle
+    shuffle(train_loader)
+    for loader in train_loader:
+        for images in loader:
+            num_cats = images[0].shape[0]
+            num_pos = images[0].shape[1]
+            labels = []
+            # Mark which batch even came from. Every image within a single dataset sample is a positive pair
+            for i in range(num_cats):
+                labels = labels + [i + 1] * num_pos
+            labels = torch.tensor(labels, dtype=int)
+            # Reshape the images from 4D to 3D tensors.
+            images = [images[0].reshape([images[0].shape[0] * images[0].shape[1],  *images[0].shape[2:]]),
+                      images[1].reshape([images[0].shape[0] * images[0].shape[1],  *images[0].shape[2:]])]
 
-        images = torch.cat([images[0], images[1]], dim=0)
-        if torch.cuda.is_available():
-            images = images.cuda(non_blocking=True)
-            labels = labels.cuda(non_blocking=True)
-        bsz = labels.shape[0]
+            if labels.shape[0] != images[0].shape[0]:
+                print(f'Skipping question {labels.shape[0]} != {images[0].shape[0]}')
+                continue
+            else:
+                idx += 1
+            data_time.update(time.time() - end)
 
-        # warm-up learning rate
-        warmup_learning_rate(opt, epoch, idx, len(train_loader), optimizer)
+            images = torch.cat([images[0], images[1]], dim=0)
+            if torch.cuda.is_available():
+                images = images.cuda(non_blocking=True)
+                labels = labels.cuda(non_blocking=True)
+            bsz = labels.shape[0]
 
-        # compute loss
-        features = model(images)
-        f1, f2 = torch.split(features, [bsz, bsz], dim=0)
-        features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
-        if opt.method == 'SupCon':
-            loss = criterion(features, labels)
-        elif opt.method == 'SimCLR':
-            loss = criterion(features)
-        else:
-            raise ValueError('contrastive method not supported: {}'.
-                             format(opt.method))
+            # warm-up learning rate
+            warmup_learning_rate(opt, epoch, idx, len(train_loader), optimizer)
 
-        # update metric
-        losses.update(loss.item(), bsz)
+            # compute loss
+            features = model(images)
+            f1, f2 = torch.split(features, [bsz, bsz], dim=0)
+            features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
+            if opt.method == 'SupCon':
+                loss = criterion(features, labels)
+            elif opt.method == 'SimCLR':
+                loss = criterion(features)
+            else:
+                raise ValueError('contrastive method not supported: {}'.
+                                 format(opt.method))
 
-        # SGD
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+            # update metric
+            losses.update(loss.item(), bsz)
 
-        # measure elapsed time
-        batch_time.update(time.time() - end)
-        end = time.time()
+            # SGD
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-        # print info
-        if (idx + 1) % opt.print_freq == 0:
-            print('Train: [{0}][{1}/{2}]\t'
-                  'BT {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                  'DT {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                  'loss {loss.val:.3f} ({loss.avg:.3f})'.format(
-                   epoch, idx + 1, len(train_loader), batch_time=batch_time,
-                   data_time=data_time, loss=losses))
-            sys.stdout.flush()
+            # measure elapsed time
+            batch_time.update(time.time() - end)
+            end = time.time()
+
+            # print info
+            if (idx + 1) % opt.print_freq == 0:
+                print('Train: [{0}][{1}/{2}]\t'
+                      'BT {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                      'DT {data_time.val:.3f} ({data_time.avg:.3f})\t'
+                      'loss {loss.val:.3f} ({loss.avg:.3f})'.format(
+                       epoch, idx + 1, len(train_loader), batch_time=batch_time,
+                       data_time=data_time, loss=losses))
+                sys.stdout.flush()
 
     return losses.avg
 
