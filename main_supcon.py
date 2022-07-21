@@ -162,25 +162,23 @@ def set_loader(opt):
                                           transform=TwoCropTransform(train_transform),
                                           download=True)
     elif opt.dataset == 'path':
+
         if group_num == 'group1':
-            train_dataset = [(
-                            Question1Dataset(root=f'{opt.data_folder}/quiz_1',
-                                              transform=TwoCropTransform(train_transform)), 40),
-                              (Question2Dataset(root=f'{opt.data_folder}/quiz_2',
-                                               transform=TwoCropTransform(train_transform)), 80),
-                              (Question3Dataset(root=f'{opt.data_folder}/quiz_3',
-                                               transform=TwoCropTransform(train_transform)), 40),
-                              (Question4Dataset(root=f'{opt.data_folder}/quiz_4',
-                                               transform=TwoCropTransform(train_transform)), 36),
-                            ]
+            train_dataset = [(Question1Dataset(root=f'{opt.data_folder}/question1',
+                                           transform=TwoCropTransform(train_transform)), opt.batch_size // 6),
+                         (Question2Dataset(root=f'{opt.data_folder}/question2',
+                                           transform=TwoCropTransform(train_transform)), opt.batch_size // 3),
+                         (Question3Dataset(root=f'{opt.data_folder}/question3',
+                                           transform=TwoCropTransform(train_transform)), opt.batch_size // 6),
+                         (Question4Dataset(root=f'{opt.data_folder}/question4',
+                                           transform=TwoCropTransform(train_transform)), opt.batch_size // 5),
+                         ]
         elif group_num == 'group2':
             train_dataset =  [(
         
                             Group2Dataset(root=f'{opt.data_folder}/quiz_1',
                                             transform=TwoCropTransform(train_transform)), 10),
                             ]
-
-   
     else:
         raise ValueError(opt.dataset)
 
@@ -229,9 +227,11 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
             num_cats = images[0].shape[0]
             num_pos = images[0].shape[1]
             labels = []
+            # Mark which batch even came from. Every image within a single dataset sample is a positive pair
             for i in range(num_cats):
                 labels = labels + [i + 1] * num_pos
             labels = torch.tensor(labels, dtype=int)
+            # Reshape the images from 4D to 3D tensors.
             images = [images[0].reshape([images[0].shape[0] * images[0].shape[1],  *images[0].shape[2:]]),
                       images[1].reshape([images[0].shape[0] * images[0].shape[1],  *images[0].shape[2:]])]
 
