@@ -184,9 +184,9 @@ class Group2Dataset(BaseQuestionLoader):
             samples2.append(sample2)
         samples = [torch.squeeze(torch.stack(samples1), dim=0),
                    torch.squeeze(torch.stack(samples2), dim=0)]
-                   
-        #if samples[0].shape[0] != 5:
-            #shutil.rmtree(os.path.join(self.root, dir_name))
-            #print(f"removed {os.path.join(self.root, dir_name)}")
+
+        if samples[0].shape[0] != 4:
+            shutil.rmtree(os.path.join(self.root, dir_name))
+            print(f"removed {os.path.join(self.root, dir_name)}")
 
         return samples

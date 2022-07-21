@@ -11,7 +11,7 @@ import torch
 import torch.backends.cudnn as cudnn
 from torchvision import transforms, datasets
 
-from question_loader import Question1Dataset, Question2Dataset, Question3Dataset, Question4Dataset,Group2Dataset
+from question_loader import Question1Dataset, Question2Dataset, Question3Dataset, Question4Dataset, Group2Dataset
 from util import TwoCropTransform, AverageMeter
 from util import adjust_learning_rate, warmup_learning_rate
 from util import set_optimizer, save_model
@@ -19,7 +19,6 @@ from timm.data import resolve_data_config
 from timm.data.transforms_factory import create_transform
 from networks.vit import SupConVit
 from losses import SupConLoss
-import numpy as np 
 
 try:
     import apex
@@ -58,6 +57,7 @@ def parse_option():
     parser.add_argument('--model', type=str, default='resnet50')
     parser.add_argument('--dataset', type=str, default='cifar10',
                         choices=['cifar10', 'cifar100', 'path'], help='dataset')
+    parser.add_argument('--group_num', type=str, default='group1')
     parser.add_argument('--mean', type=str, help='mean of dataset in path in form of str tuple')
     parser.add_argument('--std', type=str, help='std of dataset in path in form of str tuple')
     parser.add_argument('--data_folder', type=str, default=None, help='path to custom dataset')
@@ -121,7 +121,7 @@ def parse_option():
         else:
             opt.warmup_to = opt.learning_rate
 
-    opt.tb_folder = os.path.join(opt.tb_path, opt.model_name + opt.data_folder.split("/")[-2])
+    opt.tb_folder = os.path.join(opt.tb_path, opt.model_name + opt.group_num)
     if not os.path.isdir(opt.tb_folder):
         os.makedirs(opt.tb_folder)
 
