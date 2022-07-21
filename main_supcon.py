@@ -11,7 +11,7 @@ import torch
 import torch.backends.cudnn as cudnn
 from torchvision import transforms, datasets
 
-from question_loader import Question1Dataset, Question2Dataset, Question3Dataset, Question4Dataset
+from question_loader import Question1Dataset, Question2Dataset, Question3Dataset, Question4Dataset,Group2Dataset
 from util import TwoCropTransform, AverageMeter
 from util import adjust_learning_rate, warmup_learning_rate
 from util import set_optimizer, save_model
@@ -19,6 +19,7 @@ from timm.data import resolve_data_config
 from timm.data.transforms_factory import create_transform
 from networks.vit import SupConVit
 from losses import SupConLoss
+import numpy as np 
 
 try:
     import apex
@@ -120,7 +121,7 @@ def parse_option():
         else:
             opt.warmup_to = opt.learning_rate
 
-    opt.tb_folder = os.path.join(opt.tb_path, opt.model_name)
+    opt.tb_folder = os.path.join(opt.tb_path, opt.model_name + opt.data_folder.split("/")[-2])
     if not os.path.isdir(opt.tb_folder):
         os.makedirs(opt.tb_folder)
 
@@ -150,6 +151,8 @@ def set_loader(opt):
     config['mean'] = mean
     train_transform = create_transform(**config, is_training=True)
 
+    group_num = opt.data_folder.split("/")[-2]
+
     if opt.dataset == 'cifar10':
         train_dataset = datasets.CIFAR10(root=opt.data_folder,
                                          transform=TwoCropTransform(train_transform),
@@ -159,15 +162,25 @@ def set_loader(opt):
                                           transform=TwoCropTransform(train_transform),
                                           download=True)
     elif opt.dataset == 'path':
-        train_dataset = [(Question1Dataset(root=f'{opt.data_folder}/question1',
-                                          transform=TwoCropTransform(train_transform)), 40),
-                         (Question2Dataset(root=f'{opt.data_folder}/question2',
-                                          transform=TwoCropTransform(train_transform)), 80),
-                         (Question3Dataset(root=f'{opt.data_folder}/question3',
-                                          transform=TwoCropTransform(train_transform)), 40),
-                         (Question4Dataset(root=f'{opt.data_folder}/question4',
-                                          transform=TwoCropTransform(train_transform)), 36),
-                         ]
+        if group_num == 'group1':
+            train_dataset = [(
+                            Question1Dataset(root=f'{opt.data_folder}/quiz_1',
+                                              transform=TwoCropTransform(train_transform)), 40),
+                              (Question2Dataset(root=f'{opt.data_folder}/quiz_2',
+                                               transform=TwoCropTransform(train_transform)), 80),
+                              (Question3Dataset(root=f'{opt.data_folder}/quiz_3',
+                                               transform=TwoCropTransform(train_transform)), 40),
+                              (Question4Dataset(root=f'{opt.data_folder}/quiz_4',
+                                               transform=TwoCropTransform(train_transform)), 36),
+                            ]
+        elif group_num == 'group2':
+            train_dataset =  [(
+        
+                            Group2Dataset(root=f'{opt.data_folder}/quiz_1',
+                                            transform=TwoCropTransform(train_transform)), 10),
+                            ]
+
+   
     else:
         raise ValueError(opt.dataset)
 
@@ -190,8 +203,8 @@ def set_model(opt):
         model = apex.parallel.convert_syncbn_model(model)
 
     if torch.cuda.is_available():
-        if torch.cuda.device_count() > 1:
-            model.encoder = torch.nn.DataParallel(model.encoder)
+        #if torch.cuda.device_count() > 1:
+        #    model.encoder = torch.nn.DataParallel(model.encoder)
         model = model.cuda()
         criterion = criterion.cuda()
         cudnn.benchmark = True
@@ -303,15 +316,16 @@ def main():
         # tensorboard logger
         logger.log_value('loss', loss, epoch)
         logger.log_value('learning_rate', optimizer.param_groups[0]['lr'], epoch)
+        print(f'loss: {loss} epoch {epoch}')
 
         if epoch % opt.save_freq == 0:
             save_file = os.path.join(
-                opt.save_folder, 'ckpt_epoch_{epoch}.pth'.format(epoch=epoch))
+                opt.save_folder, f'ckpt_{opt.data_folder.split("/")[-2]}_epoch_{epoch}.pth')
             save_model(model, optimizer, opt, epoch, save_file)
 
     # save the last model
     save_file = os.path.join(
-        opt.save_folder, 'last.pth')
+        opt.save_folder, f'last_{opt.data_folder.split("/")[-2]}.pth')
     save_model(model, optimizer, opt, opt.epochs, save_file)
 
 
