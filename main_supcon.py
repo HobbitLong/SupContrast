@@ -216,11 +216,11 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
             num_cats = images[0].shape[0]
             num_pos = images[0].shape[1]
             labels = []
-            # Mark which batch even came from. Every image within a single dataset sample is a positive pair
+            # Mark which batch even came from. Every image within a single question sample is a positive pair
             for i in range(num_cats):
                 labels = labels + [i + 1] * num_pos
             labels = torch.tensor(labels, dtype=int)
-            # Reshape the images from 4D to 3D tensors.
+            # Reshape the images from 5D to 4D tensors.
             images = [images[0].reshape([images[0].shape[0] * images[0].shape[1],  *images[0].shape[2:]]),
                       images[1].reshape([images[0].shape[0] * images[0].shape[1],  *images[0].shape[2:]])]
 
