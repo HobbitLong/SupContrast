@@ -40,6 +40,8 @@ def parse_option():
                         help='num of workers to use')
     parser.add_argument('--epochs', type=int, default=1000,
                         help='number of training epochs')
+    parser.add_argument('--use_parallel', type=bool, default=False,
+                        help='Use parallel trainer')
 
     # optimization
     parser.add_argument('--learning_rate', type=float, default=0.05,
@@ -152,8 +154,6 @@ def set_loader(opt):
     config['mean'] = mean
     train_transform = create_transform(**config, is_training=True)
 
-    #group_num = opt.data_folder.split("/")[-2]
-
     if opt.dataset == 'cifar10':
         train_dataset = datasets.CIFAR10(root=opt.data_folder,
                                          transform=TwoCropTransform(train_transform),
@@ -162,7 +162,6 @@ def set_loader(opt):
         train_dataset = datasets.CIFAR100(root=opt.data_folder,
                                           transform=TwoCropTransform(train_transform),
                                           download=True)
-    #elif opt.dataset == 'path' and opt.method =="SupCon":
     elif opt.dataset == 'path':
 
         if opt.group_num == 'group1':
@@ -176,11 +175,19 @@ def set_loader(opt):
                                            transform=TwoCropTransform(train_transform)), opt.batch_size // 5),
                          ]
         elif opt.group_num == 'group2':
-            train_dataset =  [(
+            train_dataset = [(
         
                             Group2Dataset(root=f'{opt.data_folder}/quiz_1_v2',
                                             transform=TwoCropTransform(train_transform)), 10),
                             ]
+        elif opt.group_num == 'group4':
+            train_dataset = [
+                             (Question2Dataset(root=f'{opt.data_folder}/question1',
+                                               transform=TwoCropTransform(train_transform)), opt.batch_size // 3),
+                             (Question4Dataset(root=f'{opt.data_folder}/question2',
+                                               transform=TwoCropTransform(train_transform)), opt.batch_size // 5),
+                            ]
+
     else:
         raise ValueError(opt.dataset)
 
@@ -233,8 +240,10 @@ def set_loader_category(opt):
 
     return train_loader
 
+
 def set_model(opt):
-    model = SupConVit(name=opt.model,pretrained=opt.pretrained)
+
+    model = SupConVit(name=opt.model, pretrained=opt.pretrained)
     criterion = SupConLoss(temperature=opt.temp)
 
     # enable synchronized Batch Normalization
@@ -242,8 +251,8 @@ def set_model(opt):
         model = apex.parallel.convert_syncbn_model(model)
 
     if torch.cuda.is_available():
-        #if torch.cuda.device_count() > 1:
-        #    model.encoder = torch.nn.DataParallel(model.encoder)
+        if torch.cuda.device_count() > 1 and opt.use_parallel:
+           model.encoder = torch.nn.DataParallel(model.encoder)
         model = model.cuda()
         criterion = criterion.cuda()
         cudnn.benchmark = True
@@ -328,6 +337,7 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
 
     return losses.avg
 
+
 def train_category(train_loader, model, criterion, optimizer, epoch, opt):
     """one epoch training"""
     model.train()
@@ -353,9 +363,7 @@ def train_category(train_loader, model, criterion, optimizer, epoch, opt):
         features = model(images)
         f1, f2 = torch.split(features, [bsz, bsz], dim=0)
         features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
-        if opt.method == 'SupCon':
-            loss = criterion(features, labels)
-        elif opt.method == 'SimCLR':
+        if opt.method == 'SimCLR':
             loss = criterion(features)
         else:
             raise ValueError('contrastive method not supported: {}'.
@@ -385,6 +393,7 @@ def train_category(train_loader, model, criterion, optimizer, epoch, opt):
 
     return losses.avg
 
+
 def main():
     opt = parse_option()
 
@@ -410,7 +419,7 @@ def main():
         # train for one epoch
         time1 = time.time()
         if opt.method == 'SimCLR':
-            loss =train_category(train_loader, model, criterion, optimizer, epoch, opt)
+            loss = train_category(train_loader, model, criterion, optimizer, epoch, opt)
         else:
             loss = train(train_loader, model, criterion, optimizer, epoch, opt)
         time2 = time.time()
@@ -423,12 +432,12 @@ def main():
 
         if epoch % opt.save_freq == 0:
             save_file = os.path.join(
-                opt.save_folder, f'ckpt_{opt.method}_pretrained_{opt.pretrained}_{opt.data_folder.split("/")[-2]}_epoch_{epoch}.pth')
+                opt.save_folder, f'ckpt_{opt.method}_pretrained_{opt.pretrained}_{opt.group_num}_epoch_{epoch}.pth')
             save_model(model, optimizer, opt, epoch, save_file)
 
     # save the last model
     save_file = os.path.join(
-        opt.save_folder, f'last_{opt.data_folder.split("/")[-2]}.pth')
+        opt.save_folder, f'last_{opt.group_num}.pth')
     save_model(model, optimizer, opt, opt.epochs, save_file)
 
 
