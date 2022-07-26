@@ -11,7 +11,7 @@ import torch
 import torch.backends.cudnn as cudnn
 from torchvision import transforms, datasets
 
-from question_loader import Question1Dataset, Question2Dataset, Question3Dataset, Question4Dataset
+from question_loader import Question1Dataset, Question2Dataset, Question3Dataset, Question4Dataset, Group2Dataset
 from util import TwoCropTransform, AverageMeter
 from util import adjust_learning_rate, warmup_learning_rate
 from util import set_optimizer, save_model
@@ -57,11 +57,13 @@ def parse_option():
     parser.add_argument('--model', type=str, default='resnet50')
     parser.add_argument('--dataset', type=str, default='cifar10',
                         choices=['cifar10', 'cifar100', 'path'], help='dataset')
+    parser.add_argument('--group_num', type=str, default='group1')
     parser.add_argument('--mean', type=str, help='mean of dataset in path in form of str tuple')
     parser.add_argument('--std', type=str, help='std of dataset in path in form of str tuple')
     parser.add_argument('--data_folder', type=str, default=None, help='path to custom dataset')
     parser.add_argument('--size', type=int, default=32, help='parameter for RandomResizedCrop')
-
+    parser.add_argument('--pretrained', type=bool, default=False)
+    
     # method
     parser.add_argument('--method', type=str, default='SupCon',
                         choices=['SupCon', 'SimCLR'], help='choose method')
@@ -120,7 +122,7 @@ def parse_option():
         else:
             opt.warmup_to = opt.learning_rate
 
-    opt.tb_folder = os.path.join(opt.tb_path, opt.model_name)
+    opt.tb_folder = os.path.join(opt.tb_path, opt.model_name + opt.group_num)
     if not os.path.isdir(opt.tb_folder):
         os.makedirs(opt.tb_folder)
 
@@ -150,6 +152,66 @@ def set_loader(opt):
     config['mean'] = mean
     train_transform = create_transform(**config, is_training=True)
 
+    #group_num = opt.data_folder.split("/")[-2]
+
+    if opt.dataset == 'cifar10':
+        train_dataset = datasets.CIFAR10(root=opt.data_folder,
+                                         transform=TwoCropTransform(train_transform),
+                                         download=True)
+    elif opt.dataset == 'cifar100':
+        train_dataset = datasets.CIFAR100(root=opt.data_folder,
+                                          transform=TwoCropTransform(train_transform),
+                                          download=True)
+    #elif opt.dataset == 'path' and opt.method =="SupCon":
+    elif opt.dataset == 'path':
+
+        if opt.group_num == 'group1':
+            train_dataset = [(Question1Dataset(root=f'{opt.data_folder}/question1',
+                                           transform=TwoCropTransform(train_transform)), opt.batch_size // 6),
+                         (Question2Dataset(root=f'{opt.data_folder}/question2',
+                                           transform=TwoCropTransform(train_transform)), opt.batch_size // 3),
+                         (Question3Dataset(root=f'{opt.data_folder}/question3',
+                                           transform=TwoCropTransform(train_transform)), opt.batch_size // 6),
+                         (Question4Dataset(root=f'{opt.data_folder}/question4',
+                                           transform=TwoCropTransform(train_transform)), opt.batch_size // 5),
+                         ]
+        elif opt.group_num == 'group2':
+            train_dataset =  [(
+        
+                            Group2Dataset(root=f'{opt.data_folder}/quiz_1_v2',
+                                            transform=TwoCropTransform(train_transform)), 10),
+                            ]
+    else:
+        raise ValueError(opt.dataset)
+
+    train_sampler = None
+    train_loaders = []
+    for dataset, batch_size in train_dataset:
+        train_loaders.append(torch.utils.data.DataLoader(
+            dataset, batch_size=batch_size, shuffle=(train_sampler is None),
+            num_workers=opt.num_workers, pin_memory=True, sampler=train_sampler))        
+
+    return train_loaders
+
+def set_loader_category(opt):
+    # construct data loader
+    if opt.dataset == 'cifar10':
+        mean = (0.4914, 0.4822, 0.4465)
+        std = (0.2023, 0.1994, 0.2010)
+    elif opt.dataset == 'cifar100':
+        mean = (0.5071, 0.4867, 0.4408)
+        std = (0.2675, 0.2565, 0.2761)
+    elif opt.dataset == 'path':
+        mean = eval(opt.mean)
+        std = eval(opt.std)
+    else:
+        raise ValueError('dataset not supported: {}'.format(opt.dataset))
+
+    config = resolve_data_config({}, model=timm.create_model("vit_base_patch16_224", pretrained=True, num_classes=0))
+    config['std'] = std
+    config['mean'] = mean
+    train_transform = create_transform(**config, is_training=True)
+
     if opt.dataset == 'cifar10':
         train_dataset = datasets.CIFAR10(root=opt.data_folder,
                                          transform=TwoCropTransform(train_transform),
@@ -159,30 +221,20 @@ def set_loader(opt):
                                           transform=TwoCropTransform(train_transform),
                                           download=True)
     elif opt.dataset == 'path':
-        train_dataset = [(Question1Dataset(root=f'{opt.data_folder}/question1',
-                                           transform=TwoCropTransform(train_transform)), opt.batch_size // 6),
-                         (Question2Dataset(root=f'{opt.data_folder}/question2',
-                                           transform=TwoCropTransform(train_transform)), opt.batch_size // 3),
-                         (Question3Dataset(root=f'{opt.data_folder}/question3',
-                                           transform=TwoCropTransform(train_transform)), opt.batch_size // 6),
-                         (Question4Dataset(root=f'{opt.data_folder}/question4',
-                                           transform=TwoCropTransform(train_transform)), opt.batch_size // 5),
-                         ]
+        train_dataset = datasets.ImageFolder(root=opt.data_folder,
+                                            transform=TwoCropTransform(train_transform))
     else:
         raise ValueError(opt.dataset)
 
     train_sampler = None
-    train_loaders = []
-    for dataset, batch_size in train_dataset:
-        train_loaders.append(torch.utils.data.DataLoader(
-            dataset, batch_size=batch_size, shuffle=(train_sampler is None),
-            num_workers=opt.num_workers, pin_memory=True, sampler=train_sampler))
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=opt.batch_size, shuffle=(train_sampler is None),
+        num_workers=opt.num_workers, pin_memory=True, sampler=train_sampler)
 
-    return train_loaders
-
+    return train_loader
 
 def set_model(opt):
-    model = SupConVit(name=opt.model)
+    model = SupConVit(name=opt.model,pretrained=opt.pretrained)
     criterion = SupConLoss(temperature=opt.temp)
 
     # enable synchronized Batch Normalization
@@ -190,8 +242,8 @@ def set_model(opt):
         model = apex.parallel.convert_syncbn_model(model)
 
     if torch.cuda.is_available():
-        if torch.cuda.device_count() > 1:
-            model.encoder = torch.nn.DataParallel(model.encoder)
+        #if torch.cuda.device_count() > 1:
+        #    model.encoder = torch.nn.DataParallel(model.encoder)
         model = model.cuda()
         criterion = criterion.cuda()
         cudnn.benchmark = True
@@ -276,12 +328,71 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
 
     return losses.avg
 
+def train_category(train_loader, model, criterion, optimizer, epoch, opt):
+    """one epoch training"""
+    model.train()
+
+    batch_time = AverageMeter()
+    data_time = AverageMeter()
+    losses = AverageMeter()
+
+    end = time.time()
+    for idx, (images, labels) in enumerate(train_loader):
+        data_time.update(time.time() - end)
+
+        images = torch.cat([images[0], images[1]], dim=0)
+        if torch.cuda.is_available():
+            images = images.cuda(non_blocking=True)
+            labels = labels.cuda(non_blocking=True)
+        bsz = labels.shape[0]
+
+        # warm-up learning rate
+        warmup_learning_rate(opt, epoch, idx, len(train_loader), optimizer)
+
+        # compute loss
+        features = model(images)
+        f1, f2 = torch.split(features, [bsz, bsz], dim=0)
+        features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
+        if opt.method == 'SupCon':
+            loss = criterion(features, labels)
+        elif opt.method == 'SimCLR':
+            loss = criterion(features)
+        else:
+            raise ValueError('contrastive method not supported: {}'.
+                             format(opt.method))
+
+        # update metric
+        losses.update(loss.item(), bsz)
+
+        # SGD
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        # measure elapsed time
+        batch_time.update(time.time() - end)
+        end = time.time()
+
+        # print info
+        if (idx + 1) % opt.print_freq == 0:
+            print('Train: [{0}][{1}/{2}]\t'
+                  'BT {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                  'DT {data_time.val:.3f} ({data_time.avg:.3f})\t'
+                  'loss {loss.val:.3f} ({loss.avg:.3f})'.format(
+                   epoch, idx + 1, len(train_loader), batch_time=batch_time,
+                   data_time=data_time, loss=losses))
+            sys.stdout.flush()
+
+    return losses.avg
 
 def main():
     opt = parse_option()
 
     # build data loader
-    train_loader = set_loader(opt)
+    if opt.method == 'SimCLR':
+        train_loader = set_loader_category(opt)
+    else:
+        train_loader = set_loader(opt)
 
     # build model and criterion
     model, criterion = set_model(opt)
@@ -298,22 +409,26 @@ def main():
 
         # train for one epoch
         time1 = time.time()
-        loss = train(train_loader, model, criterion, optimizer, epoch, opt)
+        if opt.method == 'SimCLR':
+            loss =train_category(train_loader, model, criterion, optimizer, epoch, opt)
+        else:
+            loss = train(train_loader, model, criterion, optimizer, epoch, opt)
         time2 = time.time()
         print('epoch {}, total time {:.2f}'.format(epoch, time2 - time1))
 
         # tensorboard logger
         logger.log_value('loss', loss, epoch)
         logger.log_value('learning_rate', optimizer.param_groups[0]['lr'], epoch)
+        print(f'loss: {loss} epoch {epoch}')
 
         if epoch % opt.save_freq == 0:
             save_file = os.path.join(
-                opt.save_folder, 'ckpt_epoch_{epoch}.pth'.format(epoch=epoch))
+                opt.save_folder, f'ckpt_{opt.method}_pretrained_{opt.pretrained}_{opt.data_folder.split("/")[-2]}_epoch_{epoch}.pth')
             save_model(model, optimizer, opt, epoch, save_file)
 
     # save the last model
     save_file = os.path.join(
-        opt.save_folder, 'last.pth')
+        opt.save_folder, f'last_{opt.data_folder.split("/")[-2]}.pth')
     save_model(model, optimizer, opt, opt.epochs, save_file)
 
 

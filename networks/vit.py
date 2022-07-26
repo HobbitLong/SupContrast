@@ -5,10 +5,10 @@ import torch.nn.functional as F
 
 class SupConVit(nn.Module):
     """backbone + projection head"""
-    def __init__(self, name='', head='mlp', feat_dim=128):
+    def __init__(self, name='', head='mlp', feat_dim=128, pretrained=True):
         super(SupConVit, self).__init__()
         dim_in = 768
-        self.encoder = timm.create_model("vit_base_patch16_224", pretrained=True, num_classes=0)
+        self.encoder = timm.create_model("vit_base_patch16_224", pretrained=pretrained, num_classes=0)
         if head == 'linear':
             self.head = nn.Linear(dim_in, feat_dim)
         elif head == 'mlp':
