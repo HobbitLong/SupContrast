@@ -10,8 +10,10 @@ import tensorboard_logger as tb_logger
 import torch
 import torch.backends.cudnn as cudnn
 from torchvision import transforms, datasets
+import datetime
 
-from question_loader import Question1Dataset, Question2Dataset, Question3Dataset, Question4Dataset, Group2Dataset
+from question_loader import (Question1Dataset, Question2Dataset, Question3Dataset, Question4Dataset,
+                             Group2Dataset, Group3Dataset)
 from util import TwoCropTransform, AverageMeter
 from util import adjust_learning_rate, warmup_learning_rate
 from util import set_optimizer, save_model
@@ -180,6 +182,11 @@ def set_loader(opt):
                             Group2Dataset(root=f'{opt.data_folder}/quiz_1_v2',
                                             transform=TwoCropTransform(train_transform)), 10),
                             ]
+        elif opt.group_num == 'group3':
+            train_dataset = [(
+                Group3Dataset(root=f'{opt.data_folder}/question1/train',
+                              transform=TwoCropTransform(train_transform)), opt.batch_size // 2),
+            ]
         elif opt.group_num == 'group4':
             train_dataset = [
                              (Question2Dataset(root=f'{opt.data_folder}/question1',
@@ -273,6 +280,7 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     from random import shuffle
     shuffle(train_loader)
     for loader in train_loader:
+        print(f"Using loader {loader.dataset.__class__}")
         for images in loader:
             num_cats = images[0].shape[0]
             num_pos = images[0].shape[1]
@@ -327,7 +335,8 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
 
             # print info
             if (idx + 1) % opt.print_freq == 0:
-                print('Train: [{0}][{1}/{2}]\t'
+                print(f'{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\t' +
+                      'Train: [{0}][{1}/{2}]\t'
                       'BT {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                       'DT {data_time.val:.3f} ({data_time.avg:.3f})\t'
                       'loss {loss.val:.3f} ({loss.avg:.3f})'.format(
