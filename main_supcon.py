@@ -151,7 +151,7 @@ def set_loader(opt):
     else:
         raise ValueError('dataset not supported: {}'.format(opt.dataset))
 
-    config = resolve_data_config({}, model=timm.create_model("vit_base_patch16_224", pretrained=True, num_classes=0))
+    config = resolve_data_config({}, model=timm.create_model("vit_base_patch16_224", pretrained=False, num_classes=0))
     config['std'] = std
     config['mean'] = mean
     train_transform = create_transform(**config, is_training=True)
@@ -221,7 +221,7 @@ def set_loader_category(opt):
     else:
         raise ValueError('dataset not supported: {}'.format(opt.dataset))
 
-    config = resolve_data_config({}, model=timm.create_model("vit_base_patch16_224", pretrained=True, num_classes=0))
+    config = resolve_data_config({}, model=timm.create_model("vit_base_patch16_224", pretrained=False, num_classes=0))
     config['std'] = std
     config['mean'] = mean
     train_transform = create_transform(**config, is_training=True)
