@@ -7,6 +7,25 @@ This repo covers an reference implementation for the following papers in PyTorch
 (1) Supervised Contrastive Learning. [Paper](https://arxiv.org/abs/2004.11362)  
 (2) A Simple Framework for Contrastive Learning of Visual Representations. [Paper](https://arxiv.org/abs/2002.05709)  
 
+## Requirements
+To use this project first please install all requirements.
+```bash
+pip install -r requirements.txt
+```
+
+## Image reduction
+File I/O for large images greatly increases training time. As such we need to reduce the 
+image size to from FHD to have the largest edge be 550.
+
+The below script will copy all resized images and json files from <image_dir> to <destination_dir>
+
+Usage:
+```bash
+# python image_reducer.py <image_dir> <destination_dir>
+# Example
+python image_reducer.py /home/quiz_dir output_quiz_dir
+```
+
 ## Update
 
 ImageNet model (small batch size with the trick of the momentum encoder) is released [here](https://www.dropbox.com/s/l4a69ececk4spdt/supcon.pth?dl=0). It achieved > 79% top-1 accuracy.
