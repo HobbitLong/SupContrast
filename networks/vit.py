@@ -10,6 +10,7 @@ class SupConVit(nn.Module):
         dim_in = 768
         print(f"Setting pretrained to {pretrained}")
         self.encoder = timm.create_model("vit_base_patch16_224", pretrained=pretrained, num_classes=0)
+        
         if head == 'linear':
             self.head = nn.Linear(dim_in, feat_dim)
         elif head == 'mlp':

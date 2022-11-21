@@ -131,3 +131,17 @@ dmypy.json
 # Pyre type checker
 .pyre/
 save/
+wandb/
+#encoder_models/
+score_utils/
+
+# files
+./notebooks/
+./sh_files/
+./make_resize.py 
+notebooks/
+sh_files/
+utils/
+main_f1score.py
+train_supcon50_group4.sh
+inference_group4.sh

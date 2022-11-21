@@ -21,6 +21,12 @@ from timm.data import resolve_data_config
 from timm.data.transforms_factory import create_transform
 from networks.vit import SupConVit
 from losses import SupConLoss
+import wandb
+from calculator import calculate1, calculate3, calculate4
+from quiz_master import quiz3, quiz1, quiz2,  quiz4, group2, group4_question1, group4_question2
+from encoder_models.vit import RankVit, ClusterVit
+from encoder_models.resnet import Resnet
+from tqdm import tqdm
 
 try:
     import apex
@@ -28,13 +34,37 @@ try:
 except ImportError:
     pass
 
+MODELS = {
+    'vit': ClusterVit,
+    'rankvit': RankVit
+}
+
+CALCULATOR = {
+    1: calculate1,
+    2: calculate1,
+    3: calculate3,
+    4: calculate4,
+    5: calculate1,
+    7: calculate1,
+    8: calculate4,
+}
+
+QUIZ_OPTIONS = {
+    1: quiz1,
+    2: quiz2,
+    3: quiz3,
+    4: quiz4,
+    5: group2,
+    7: group4_question1,
+    8: group4_question2,
+}
 
 def parse_option():
     parser = argparse.ArgumentParser('argument for training')
 
     parser.add_argument('--print_freq', type=int, default=10,
                         help='print frequency')
-    parser.add_argument('--save_freq', type=int, default=50,
+    parser.add_argument('--save_freq', type=int, default=1,
                         help='save frequency')
     parser.add_argument('--batch_size', type=int, default=256,
                         help='batch_size')
@@ -42,7 +72,9 @@ def parse_option():
                         help='num of workers to use')
     parser.add_argument('--epochs', type=int, default=1000,
                         help='number of training epochs')
-    parser.add_argument('--use_parallel', type=bool, default=False,
+    parser.add_argument('--use_parallel', type=bool, default=True,
+                        help='Use parallel trainer')
+    parser.add_argument('--gpus', type=str, default="2,3",
                         help='Use parallel trainer')
 
     # optimization
@@ -67,6 +99,9 @@ def parse_option():
     parser.add_argument('--data_folder', type=str, default=None, help='path to custom dataset')
     parser.add_argument('--size', type=int, default=32, help='parameter for RandomResizedCrop')
     parser.add_argument('--pretrained', type=bool, default=False)
+    parser.add_argument('--wandb_id', type=str, default="")
+    parser.add_argument('--wandb', type=bool, default=False)
+    parser.add_argument('--wandb_pn', type=str, default="")
     
     # method
     parser.add_argument('--method', type=str, default='SupCon',
@@ -291,7 +326,7 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
             labels = torch.tensor(labels, dtype=int)
             # Reshape the images from 5D to 4D tensors.
             images = [images[0].reshape([images[0].shape[0] * images[0].shape[1],  *images[0].shape[2:]]),
-                      images[1].reshape([images[0].shape[0] * images[0].shape[1],  *images[0].shape[2:]])]
+                    images[1].reshape([images[0].shape[0] * images[0].shape[1],  *images[0].shape[2:]])]
 
             if labels.shape[0] != images[0].shape[0]:
                 print(f'Skipping question {labels.shape[0]} != {images[0].shape[0]}')
@@ -319,7 +354,7 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
                 loss = criterion(features)
             else:
                 raise ValueError('contrastive method not supported: {}'.
-                                 format(opt.method))
+                                format(opt.method))
 
             # update metric
             losses.update(loss.item(), bsz)
@@ -335,15 +370,15 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
 
             # print info
             if (idx + 1) % opt.print_freq == 0:
-                print(f'{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\t' +
-                      'Train: [{0}][{1}/{2}]\t'
-                      'BT {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                      'DT {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                      'loss {loss.val:.3f} ({loss.avg:.3f})'.format(
-                       epoch, idx + 1, len(train_loader), batch_time=batch_time,
-                       data_time=data_time, loss=losses))
-                sys.stdout.flush()
 
+                print('Train: [{0}][{1}/{2}]\t'
+                    'BT {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                    'DT {data_time.val:.3f} ({data_time.avg:.3f})\t'
+                    'loss {loss.val:.3f} ({loss.avg:.3f})'.format(
+                    epoch, idx + 1, len(train_loader), batch_time=batch_time,
+                    data_time=data_time, loss=losses))
+                sys.stdout.flush()
+                
     return losses.avg
 
 
@@ -402,10 +437,10 @@ def train_category(train_loader, model, criterion, optimizer, epoch, opt):
 
     return losses.avg
 
-
 def main():
     opt = parse_option()
-
+    if opt.wandb:
+        wandb.init(project=opt.wandb_pn, entity=opt.wandb_id)
     # build data loader
     if opt.method == 'SimCLR':
         train_loader = set_loader_category(opt)
@@ -423,6 +458,7 @@ def main():
 
     # training routine
     for epoch in range(1, opt.epochs + 1):
+
         adjust_learning_rate(opt, optimizer, epoch)
 
         # train for one epoch
@@ -431,18 +467,25 @@ def main():
             loss = train_category(train_loader, model, criterion, optimizer, epoch, opt)
         else:
             loss = train(train_loader, model, criterion, optimizer, epoch, opt)
+        if opt.wandb:
+            wandb.log({'loss':loss}, step=epoch)
         time2 = time.time()
-        print('epoch {}, total time {:.2f}'.format(epoch, time2 - time1))
-
         # tensorboard logger
         logger.log_value('loss', loss, epoch)
         logger.log_value('learning_rate', optimizer.param_groups[0]['lr'], epoch)
-        print(f'loss: {loss} epoch {epoch}')
+        print(f'epoch {epoch}, loss: {loss} ')
+        weights_name = f'ckpt_{opt.method}_pretrained_{opt.pretrained}_{opt.group_num}_epoch_{epoch}.pth'
 
         if epoch % opt.save_freq == 0:
-            save_file = os.path.join(
-                opt.save_folder, f'ckpt_{opt.method}_pretrained_{opt.pretrained}_{opt.group_num}_epoch_{epoch}.pth')
-            save_model(model, optimizer, opt, epoch, save_file)
+
+            weights_path = os.path.join(
+                opt.save_folder,weights_name)
+            save_model(model, optimizer, opt, epoch, weights_path)
+            model_name = 'vit'
+            valid_path = "valid"
+            test_path = "test"
+
+            root_dir = "/".join(opt.data_folder.split("/")[:-1]) 
 
     # save the last model
     save_file = os.path.join(
