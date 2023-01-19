@@ -15,7 +15,7 @@ from torchvision.transforms import Resize
 from torchvision.io import read_image
 from torchvision.utils import save_image
 
-CONF_THRESH = 0.5
+CONF_THRESH = 0.1
 FRAME_DIFF = 4
 RESIZE = 224
 

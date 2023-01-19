@@ -56,7 +56,7 @@ def parse_option():
         "--dataset",
         type=str,
         default="cifar10",
-        choices=["cifar10", "cifar100"],
+        choices=["cifar10", "cifar100","path"],
         help="dataset",
     )
 
@@ -70,7 +70,7 @@ def parse_option():
         "--ckpt", type=str, default="", help="path to pre-trained model"
     )
     parser.add_argument(
-        "--n_class", type=int, default=0, help="number of classes in the dataset"
+        "--n_cls", type=int, default=0, help="number of classes in the dataset"
     )
     parser.add_argument(
         "--data_folder", type=str, default="./datasets/", help="path to custom dataset"
@@ -119,7 +119,7 @@ def parse_option():
     elif opt.dataset == "cifar100":
         opt.n_cls = 100
     elif opt.dataset == "path":
-        assert opt.n_class > 0
+        assert opt.n_cls > 0
     else:
         raise ValueError("dataset not supported: {}".format(opt.dataset))
 
