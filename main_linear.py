@@ -56,7 +56,7 @@ def parse_option():
         "--dataset",
         type=str,
         default="cifar10",
-        choices=["cifar10", "cifar100","path"],
+        choices=["cifar10", "cifar100", "path"],
         help="dataset",
     )
 
