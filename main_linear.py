@@ -123,8 +123,8 @@ def parse_option():
         assert opt.n_cls > 0
     else:
         raise ValueError("dataset not supported: {}".format(opt.dataset))
-    
-    opt.model_path = './save/Linear/{}_models'.format(opt.dataset)
+
+    opt.model_path = "./save/Linear/{}_models".format(opt.dataset)
     opt.save_folder = os.path.join(opt.model_path, opt.model_name)
     if not os.path.isdir(opt.save_folder):
         os.makedirs(opt.save_folder)
@@ -306,15 +306,15 @@ def main():
 
         if epoch % opt.save_freq == 0:
             save_file = os.path.join(
-                opt.save_folder, 'ckpt_epoch_{epoch}.pth'.format(epoch=epoch))
-            save_model(model, optimizer, opt, epoch, save_file)
+                opt.save_folder, "ckpt_epoch_{epoch}.pth".format(epoch=epoch)
+            )
+            save_model(classifier, optimizer, opt, epoch, save_file)
 
     print("best accuracy: {:.2f}".format(best_acc))
-    
+
     # save the last model
-    save_file = os.path.join(
-        opt.save_folder, 'last.pth')
-    save_model(model, optimizer, opt, opt.epochs, save_file)
+    save_file = os.path.join(opt.save_folder, "last.pth")
+    save_model(classifier, optimizer, opt, opt.epochs, save_file)
 
 
 if __name__ == "__main__":

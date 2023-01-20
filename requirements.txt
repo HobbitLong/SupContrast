@@ -3,3 +3,4 @@ tensorboard_logger
 opencv-python
 boto3
 onnxruntime-gpu
+tqdm
