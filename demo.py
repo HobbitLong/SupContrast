@@ -1,12 +1,20 @@
 import argparse
 import os
+from PIL import Image
+import time
 import cv2
 from tqdm import tqdm
 import numpy as np
 import torch
+from torchvision.transforms import Resize, Normalize, ToTensor
 from networks.resnet_big import SupCEResNet
 import onnxruntime as ort
-from preprocess import load_onnx
+from preprocess import (
+    _letterbox,
+    load_onnx,
+    _inference_onnx,
+    _crop_bbox,
+)
 
 
 def parse_args():
@@ -21,7 +29,7 @@ def parse_args():
         "--n_cls",
         type=int,
         help="Number of unique classes in the dataset",
-        required=True,
+        default=14,
     )
     parser.add_argument(
         "--model",
@@ -63,6 +71,11 @@ def parse_args():
     return parser.parse_args()
 
 
+MEAN = (0.4914, 0.4822, 0.4465)
+STD = (0.2675, 0.2565, 0.2761)
+NORMALIZE = Normalize(mean=MEAN, std=STD)
+
+
 def extract_bboxes(output, confidence):
     # Extract the bounding boxes, class labels, and scores from the model output
     boxes = output[0].reshape(-1, 4)
@@ -78,13 +91,39 @@ def extract_bboxes(output, confidence):
     return boxes, classes, scores
 
 
-def load_models(args):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    # Load Supcon and Classifier Models
+def load_models(args, device="cuda"):
+    # Load model
     model = SupCEResNet(args.model, args.n_cls)
-    model.encoder.load_state_dict(torch.load(args.supcon_path, map_location=device))
-    model.fc.load_state_dict(torch.load(args.clf_path, map_location=device))
+
+    # Load supcon weights
+    ckpt_supcon = torch.load(args.supcon_path, map_location="cpu")
+    state_dict_supcon = ckpt_supcon["model"]
+
+    new_state_dict_supcon = {}
+    for k, v in state_dict_supcon.items():
+        k = k.replace("encoder.module.", "")
+        if k.startswith("head."):  # remove the head
+            continue
+        new_state_dict_supcon[k] = v
+
+    state_dict_supcon = new_state_dict_supcon
+
+    model.encoder.load_state_dict(new_state_dict_supcon)
+
+    # Load classification head weights
+    ckpt_clf = torch.load(args.clf_path, map_location="cpu")
+    state_dict_clf = ckpt_clf["model"]
+
+    new_state_dict_clf = {}
+    for k, v in state_dict_clf.items():
+        k = k.replace("fc.", "")
+        new_state_dict_clf[k] = v
+
+    state_dict_clf = new_state_dict_clf
+
+    model.fc.load_state_dict(state_dict_clf)
+
+    model = model.to(device)
 
     # Load Yolov7
     yolo_session = load_onnx(args.yolo_path)
@@ -98,42 +137,84 @@ def main():
     # Parser arguments
     args = parse_args()
 
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
     # Load the models
-    model, session, input_name, output_name = load_models(args)
+    model, yolo_session, input_name, output_name = load_models(args, device)
 
     # Open the video file
     cap = cv2.VideoCapture(args.video_path)
     assert cap.isOpened(), "Cannot capture source"
 
-    # Process each frame of the video
-    while cap.isOpened():
+    # Run models on video
+    since = time.time()
+    for frame_num in tqdm(range(int(cap.get(cv2.CAP_PROP_FRAME_COUNT)))):
+        # Read frame
         ret, frame = cap.read()
-        if not ret:
-            break
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        assert ret, f"Could not read frame {frame_num} from video"
 
-        # Resize the frame to match the input size of the model
-        frame = cv2.resize(frame, (1280, 1280))
+        # Run Yolov7
+        img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        image = img.copy()
+        image, ratio, dwdh = _letterbox(image, auto=False)
+        image = image.transpose((2, 0, 1))
+        image = np.expand_dims(image, 0)
+        image = np.ascontiguousarray(image)
 
-        # Run the model on the frame and get the output
-        output = session.run([output_name], {input_name: frame})[0]
+        im = image.astype(np.float32)
+        im /= 255
 
-        # Extract the bounding boxes and class labels from the output
-        boxes, classes, scores = extract_bboxes(output, args.confidence)
+        output = _inference_onnx(yolo_session, {input_name: im}, [output_name])
 
-        # Draw the bounding boxes on the frame
-        for box, class_id, score in zip(boxes, classes, scores):
-            xmin, ymin, xmax, ymax = box
-            cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
-            cv2.putText(
-                frame,
-                f"{class_id} {score:0.2f}",
-                (xmin, ymin - 10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                (0, 255, 0),
-                2,
-            )
+        detected_bboxes = []
+        detected_object_names = []
+
+        if len(output[0]) > 0:
+            # Run OCN and classification head on cropped objects
+            for detection in output[0]:
+                if detection[6] > args.confidence:
+                    # Crop object
+                    bbox = np.array(
+                        [
+                            detection if detection > 0 else 0
+                            for detection in detection[1:5]
+                        ]
+                    )  # Remove negative values
+                    obj = _crop_bbox(frame, bbox, dwdh, ratio)
+
+                    # Run combined model on cropped object
+                    if len(obj) > 0:
+                        detected_bboxes.append(bbox)
+                        # obj = cv2.cvtColor(obj, cv2.COLOR_BGR2RGB)
+                        obj = cv2.resize(obj, (224, 224))
+                        obj = obj.transpose((2, 0, 1))  # HWC to CHW
+
+                        # Convert to torch tensor and normalize
+                        obj = (
+                            torch.from_numpy(obj).float().unsqueeze(0).to(device)
+                        )  # 1, 3, 224, 224
+                        obj = NORMALIZE(obj)
+
+                        output = model(obj)
+                        output = output.detach().cpu().numpy()
+                        output = str(int(np.argmax(output, axis=1)))
+                        # Get class with highest probability and its name
+                        # output = OBJECT_CLASSES[int(np.argmax(output, axis=1))]
+                        detected_object_names.append(output)
+
+            # Draw bounding boxes and labels on frame
+            for bbox, obj in zip(detected_bboxes, detected_object_names):
+                x1, y1, x2, y2 = bbox.astype(int)
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(
+                    frame,
+                    obj,
+                    (x1, y1 - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.9,
+                    (36, 255, 12),
+                    2,
+                )
 
         # Display the frame
         cv2.imshow("Video", frame)
