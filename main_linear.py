@@ -4,6 +4,7 @@ import sys
 import argparse
 import time
 import math
+import os
 
 import torch
 import torch.backends.cudnn as cudnn
@@ -11,7 +12,7 @@ import torch.backends.cudnn as cudnn
 from main_ce import set_loader
 from util import AverageMeter
 from util import adjust_learning_rate, warmup_learning_rate, accuracy
-from util import set_optimizer
+from util import set_optimizer, save_model
 from networks.resnet_big import SupConResNet, LinearClassifier
 
 try:
@@ -25,13 +26,13 @@ def parse_option():
     parser = argparse.ArgumentParser("argument for training")
 
     parser.add_argument("--print_freq", type=int, default=10, help="print frequency")
-    parser.add_argument("--save_freq", type=int, default=50, help="save frequency")
-    parser.add_argument("--batch_size", type=int, default=256, help="batch_size")
+    parser.add_argument("--save_freq", type=int, default=10, help="save frequency")
+    parser.add_argument("--batch_size", type=int, default=32, help="batch_size")
     parser.add_argument(
         "--num_workers", type=int, default=16, help="num of workers to use"
     )
     parser.add_argument(
-        "--epochs", type=int, default=100, help="number of training epochs"
+        "--epochs", type=int, default=20, help="number of training epochs"
     )
 
     # optimization
@@ -41,7 +42,7 @@ def parse_option():
     parser.add_argument(
         "--lr_decay_epochs",
         type=str,
-        default="60,75,90",
+        default="12,15,18",
         help="where to decay lr, can be a list",
     )
     parser.add_argument(
@@ -122,6 +123,11 @@ def parse_option():
         assert opt.n_cls > 0
     else:
         raise ValueError("dataset not supported: {}".format(opt.dataset))
+    
+    opt.model_path = './save/Linear/{}_models'.format(opt.dataset)
+    opt.save_folder = os.path.join(opt.model_path, opt.model_name)
+    if not os.path.isdir(opt.save_folder):
+        os.makedirs(opt.save_folder)
 
     return opt
 
@@ -298,7 +304,17 @@ def main():
         if val_acc > best_acc:
             best_acc = val_acc
 
+        if epoch % opt.save_freq == 0:
+            save_file = os.path.join(
+                opt.save_folder, 'ckpt_epoch_{epoch}.pth'.format(epoch=epoch))
+            save_model(model, optimizer, opt, epoch, save_file)
+
     print("best accuracy: {:.2f}".format(best_acc))
+    
+    # save the last model
+    save_file = os.path.join(
+        opt.save_folder, 'last.pth')
+    save_model(model, optimizer, opt, opt.epochs, save_file)
 
 
 if __name__ == "__main__":
