@@ -16,6 +16,23 @@ from preprocess import (
     _crop_bbox,
 )
 
+OBJECT_CLASSES = [
+    "50mL Tube",
+    "50mL Tube Rack",
+    "5mL Syringe",
+    "8 Channel Finnett Pipette",
+    "96 Well Plate",
+    "Eppendorf Repeater",
+    "Micropipette",
+    "Picogreen Buffer",
+    "Picogreen Kit",
+    "Pipette Tip Box",
+    "Reservoir",
+    "Syringe",
+    "Thrash",
+    "Vortexer",
+]
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -156,6 +173,18 @@ def main():
     cap = cv2.VideoCapture(args.video_path)
     assert cap.isOpened(), "Cannot capture source"
 
+    # Create output video
+    out = cv2.VideoWriter(
+        "data/output/out.mp4",
+        cv2.VideoWriter_fourcc(*"mp4v"),
+        int(cap.get(cv2.CAP_PROP_FPS)),
+        (
+            int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+            int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+        ),
+    )
+    print(f"Processing at {int(cap.get(cv2.CAP_PROP_FPS))} fps")
+
     # Run models on video
     since = time.time()
     for frame_num in tqdm(range(int(cap.get(cv2.CAP_PROP_FRAME_COUNT)))):
@@ -195,7 +224,7 @@ def main():
                     # Run combined model on cropped object
                     if len(obj) > 0:
                         detected_bboxes.append(bbox)
-                        # obj = cv2.cvtColor(obj, cv2.COLOR_BGR2RGB)
+                        obj = cv2.cvtColor(obj, cv2.COLOR_RGB2BGR)
                         # obj = obj.transpose((2, 0, 1))  # HWC to CHW
                         obj = Image.fromarray(obj)
                         # Convert to torch tensor and normalize
@@ -205,9 +234,8 @@ def main():
                         with torch.no_grad():
                             output = clf(supcon.encoder(obj))
                         output = output.detach().cpu().numpy()
-                        output = str(int(np.argmax(output, axis=1)))
                         # Get class with highest probability and its name
-                        # output = OBJECT_CLASSES[int(np.argmax(output, axis=1))]
+                        output = OBJECT_CLASSES[int(np.argmax(output, axis=1))]
                         detected_object_names.append(output)
 
             # Draw bounding boxes and labels on frame
@@ -224,10 +252,17 @@ def main():
                     2,
                 )
 
-        # Display the frame
-        cv2.imshow("Video", frame)
+        #
+
+        # save video
+        out.write(frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
+
+    time_elapsed = time.time() - since
+    print(
+        f"Processing complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s at {int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) / time_elapsed:.2f} fps"
+    )
 
     cap.release()
     cv2.destroyAllWindows()

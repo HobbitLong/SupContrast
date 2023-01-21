@@ -17,7 +17,7 @@ def parse_args():
     parser.add_argument(
         "--image_folder",
         type=str,
-        default="data/input/15objects_lab/samples/train/50mL Tube",
+        default="data/input/15objects_lab/samples/test/Thrash",
         help="Path to image file",
     )
     parser.add_argument(
