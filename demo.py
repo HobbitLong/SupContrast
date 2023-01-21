@@ -263,7 +263,8 @@ def main():
     print(
         f"Processing complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s at {int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) / time_elapsed:.2f} fps"
     )
-
+    
+    out.release()
     cap.release()
     cv2.destroyAllWindows()
 
