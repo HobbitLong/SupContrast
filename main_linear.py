@@ -32,7 +32,7 @@ def parse_option():
         "--num_workers", type=int, default=16, help="num of workers to use"
     )
     parser.add_argument(
-        "--epochs", type=int, default=20, help="number of training epochs"
+        "--epochs", type=int, default=14, help="number of training epochs"
     )
 
     # optimization
@@ -42,7 +42,7 @@ def parse_option():
     parser.add_argument(
         "--lr_decay_epochs",
         type=str,
-        default="12,15,18",
+        default="8,11,13",
         help="where to decay lr, can be a list",
     )
     parser.add_argument(
@@ -123,8 +123,8 @@ def parse_option():
         assert opt.n_cls > 0
     else:
         raise ValueError("dataset not supported: {}".format(opt.dataset))
-
-    opt.model_path = "./save/Linear/{}_models".format(opt.dataset)
+    
+    opt.model_path = './save/Linear/{}_models'.format(opt.dataset)
     opt.save_folder = os.path.join(opt.model_path, opt.model_name)
     if not os.path.isdir(opt.save_folder):
         os.makedirs(opt.save_folder)
@@ -177,7 +177,7 @@ def train(train_loader, model, classifier, criterion, optimizer, epoch, opt):
         images = images.cuda(non_blocking=True)
         labels = labels.cuda(non_blocking=True)
         bsz = labels.shape[0]
-
+        
         # warm-up learning rate
         warmup_learning_rate(opt, epoch, idx, len(train_loader), optimizer)
 
@@ -303,17 +303,20 @@ def main():
         loss, val_acc = validate(val_loader, model, classifier, criterion, opt)
         if val_acc > best_acc:
             best_acc = val_acc
+            save_file = os.path.join(
+                opt.save_folder, 'ckpt_best_acc_{acc}.pth'.format(acc=best_acc))
+            save_model(classifier, optimizer, opt, epoch, save_file)
 
         if epoch % opt.save_freq == 0:
             save_file = os.path.join(
-                opt.save_folder, "ckpt_epoch_{epoch}.pth".format(epoch=epoch)
-            )
+                opt.save_folder, 'ckpt_epoch_{epoch}.pth'.format(epoch=epoch))
             save_model(classifier, optimizer, opt, epoch, save_file)
 
     print("best accuracy: {:.2f}".format(best_acc))
-
+    
     # save the last model
-    save_file = os.path.join(opt.save_folder, "last.pth")
+    save_file = os.path.join(
+        opt.save_folder, 'last.pth')
     save_model(classifier, optimizer, opt, opt.epochs, save_file)
 
 
