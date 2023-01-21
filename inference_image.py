@@ -17,7 +17,7 @@ def parse_args():
     parser.add_argument(
         "--image_folder",
         type=str,
-        default="data/input/15objects_lab/samples/train/50mL Tube Rack",
+        default="data/input/15objects_lab/samples/train/50mL Tube",
         help="Path to image file",
     )
     parser.add_argument(
@@ -54,8 +54,8 @@ NORMALIZE = transforms.Normalize(mean=MEAN, std=STD)
 
 val_transform = transforms.Compose(
     [
-        transforms.RandomResizedCrop(size=(240, 320), scale=(0.99, 1), ratio=(0.99, 1)),
-        # transforms.Resize((224, 224)),
+        # transforms.RandomResizedCrop(size=(240, 320), scale=(0.99, 1), ratio=(0.99, 1)),
+        transforms.Resize((32, 32)),
         transforms.ToTensor(),
         NORMALIZE,
     ]

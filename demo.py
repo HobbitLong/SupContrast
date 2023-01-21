@@ -6,8 +6,8 @@ import cv2
 from tqdm import tqdm
 import numpy as np
 import torch
-from torchvision.transforms import Resize, Normalize, ToTensor
-from networks.resnet_big import SupCEResNet
+from torchvision import transforms
+from networks.resnet_big import SupConResNet, LinearClassifier
 import onnxruntime as ort
 from preprocess import (
     _letterbox,
@@ -73,7 +73,15 @@ def parse_args():
 
 MEAN = (0.4914, 0.4822, 0.4465)
 STD = (0.2675, 0.2565, 0.2761)
-NORMALIZE = Normalize(mean=MEAN, std=STD)
+NORMALIZE = transforms.Normalize(mean=MEAN, std=STD)
+
+transforms = transforms.Compose(
+    [
+        transforms.Resize((32, 32)),
+        transforms.ToTensor(),
+        NORMALIZE,
+    ]
+)
 
 
 def extract_bboxes(output, confidence):
@@ -93,7 +101,8 @@ def extract_bboxes(output, confidence):
 
 def load_models(args, device="cuda"):
     # Load model
-    model = SupCEResNet(args.model, args.n_cls)
+    SupCon = SupConResNet(name=args.model)
+    classifier = LinearClassifier(name=args.model, num_classes=args.n_cls)
 
     # Load supcon weights
     ckpt_supcon = torch.load(args.supcon_path, map_location="cpu")
@@ -101,14 +110,12 @@ def load_models(args, device="cuda"):
 
     new_state_dict_supcon = {}
     for k, v in state_dict_supcon.items():
-        k = k.replace("encoder.module.", "")
-        if k.startswith("head."):  # remove the head
-            continue
+        k = k.replace("module.", "")
         new_state_dict_supcon[k] = v
 
     state_dict_supcon = new_state_dict_supcon
 
-    model.encoder.load_state_dict(new_state_dict_supcon)
+    SupCon.load_state_dict(new_state_dict_supcon)
 
     # Load classification head weights
     ckpt_clf = torch.load(args.clf_path, map_location="cpu")
@@ -116,21 +123,22 @@ def load_models(args, device="cuda"):
 
     new_state_dict_clf = {}
     for k, v in state_dict_clf.items():
-        k = k.replace("fc.", "")
+        # k = k.replace("fc.", "")
         new_state_dict_clf[k] = v
 
     state_dict_clf = new_state_dict_clf
 
-    model.fc.load_state_dict(state_dict_clf)
+    classifier.load_state_dict(state_dict_clf)
 
-    model = model.to(device)
+    SupCon = SupCon.to(device)
+    classifier = classifier.to(device)
 
     # Load Yolov7
     yolo_session = load_onnx(args.yolo_path)
     input_name = yolo_session.get_inputs()[0].name
     output_name = yolo_session.get_outputs()[0].name
 
-    return model, yolo_session, input_name, output_name
+    return SupCon, classifier, yolo_session, input_name, output_name
 
 
 def main():
@@ -140,7 +148,9 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Load the models
-    model, yolo_session, input_name, output_name = load_models(args, device)
+    supcon, clf, yolo_session, input_name, output_name = load_models(args, device)
+    supcon.eval()
+    clf.eval()
 
     # Open the video file
     cap = cv2.VideoCapture(args.video_path)
@@ -185,17 +195,15 @@ def main():
                     # Run combined model on cropped object
                     if len(obj) > 0:
                         detected_bboxes.append(bbox)
-                        obj = cv2.cvtColor(obj, cv2.COLOR_BGR2RGB)
-                        obj = cv2.resize(obj, (240, 320))
-                        obj = obj.transpose((2, 0, 1))  # HWC to CHW
-
+                        # obj = cv2.cvtColor(obj, cv2.COLOR_BGR2RGB)
+                        # obj = obj.transpose((2, 0, 1))  # HWC to CHW
+                        obj = Image.fromarray(obj)
                         # Convert to torch tensor and normalize
-                        obj = (
-                            torch.from_numpy(obj).float().unsqueeze(0).to(device)
-                        )  # 1, 3, 32, 32
-                        obj = NORMALIZE(obj)
+                        obj = transforms(obj)
+                        obj = obj.float().unsqueeze(0).to(device)
 
-                        output = model(obj)
+                        with torch.no_grad():
+                            output = clf(supcon.encoder(obj))
                         output = output.detach().cpu().numpy()
                         output = str(int(np.argmax(output, axis=1)))
                         # Get class with highest probability and its name
