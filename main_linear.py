@@ -7,6 +7,7 @@ import math
 import os
 from PIL import Image
 import numpy as np
+import random
 
 import torch
 import torch.backends.cudnn as cudnn
@@ -239,6 +240,7 @@ def validate(val_loader, model, classifier, criterion, opt):
         for idx, (images, labels) in enumerate(val_loader):
             images = images.float().cuda()
             labels = labels.cuda()
+            print(labels)
             bsz = labels.shape[0]
 
             # forward
@@ -255,9 +257,11 @@ def validate(val_loader, model, classifier, criterion, opt):
             end = time.time()
 
             # Take a random image from the batch and save it with its predicted label
-            sample = images[0]
-            predicted_label = torch.argmax(output[0])
-            save_image(sample, f"output/sample_{predicted_label}.png")
+            index = int(random.randint(0, len(labels)))
+            sample = images[index]
+            print('random index', index)
+            predicted_label = torch.argmax(output[index])
+            save_image(sample, f"data/output/sample_{predicted_label}_{end}.png")
 
             if idx % opt.print_freq == 0:
                 print(
@@ -281,6 +285,7 @@ def save_image(sample, filename):
     """Saves a sample image to disk"""
     sample = sample.cpu().numpy()
     sample = np.transpose(sample, (1, 2, 0))
+    sample = (sample - sample.min()) / (sample.max() - sample.min())
     sample = sample * 255
     sample = sample.astype(np.uint8)
     im = Image.fromarray(sample)
