@@ -185,14 +185,14 @@ def main():
                     # Run combined model on cropped object
                     if len(obj) > 0:
                         detected_bboxes.append(bbox)
-                        # obj = cv2.cvtColor(obj, cv2.COLOR_BGR2RGB)
-                        obj = cv2.resize(obj, (224, 224))
+                        obj = cv2.cvtColor(obj, cv2.COLOR_BGR2RGB)
+                        obj = cv2.resize(obj, (240, 320))
                         obj = obj.transpose((2, 0, 1))  # HWC to CHW
 
                         # Convert to torch tensor and normalize
                         obj = (
                             torch.from_numpy(obj).float().unsqueeze(0).to(device)
-                        )  # 1, 3, 224, 224
+                        )  # 1, 3, 32, 32
                         obj = NORMALIZE(obj)
 
                         output = model(obj)

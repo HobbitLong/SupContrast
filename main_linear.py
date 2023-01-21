@@ -5,6 +5,8 @@ import argparse
 import time
 import math
 import os
+from PIL import Image
+import numpy as np
 
 import torch
 import torch.backends.cudnn as cudnn
@@ -123,8 +125,8 @@ def parse_option():
         assert opt.n_cls > 0
     else:
         raise ValueError("dataset not supported: {}".format(opt.dataset))
-    
-    opt.model_path = './save/Linear/{}_models'.format(opt.dataset)
+
+    opt.model_path = "./save/Linear/{}_models".format(opt.dataset)
     opt.save_folder = os.path.join(opt.model_path, opt.model_name)
     if not os.path.isdir(opt.save_folder):
         os.makedirs(opt.save_folder)
@@ -177,7 +179,7 @@ def train(train_loader, model, classifier, criterion, optimizer, epoch, opt):
         images = images.cuda(non_blocking=True)
         labels = labels.cuda(non_blocking=True)
         bsz = labels.shape[0]
-        
+
         # warm-up learning rate
         warmup_learning_rate(opt, epoch, idx, len(train_loader), optimizer)
 
@@ -252,6 +254,11 @@ def validate(val_loader, model, classifier, criterion, opt):
             batch_time.update(time.time() - end)
             end = time.time()
 
+            # Take a random image from the batch and save it with its predicted label
+            sample = images[0]
+            predicted_label = torch.argmax(output[0])
+            save_image(sample, f"output/sample_{predicted_label}.png")
+
             if idx % opt.print_freq == 0:
                 print(
                     "Test: [{0}/{1}]\t"
@@ -268,6 +275,16 @@ def validate(val_loader, model, classifier, criterion, opt):
 
     print(" * Acc@1 {top1.avg:.3f}".format(top1=top1))
     return losses.avg, top1.avg
+
+
+def save_image(sample, filename):
+    """Saves a sample image to disk"""
+    sample = sample.cpu().numpy()
+    sample = np.transpose(sample, (1, 2, 0))
+    sample = sample * 255
+    sample = sample.astype(np.uint8)
+    im = Image.fromarray(sample)
+    im.save(filename)
 
 
 def main():
@@ -304,19 +321,20 @@ def main():
         if val_acc > best_acc:
             best_acc = val_acc
             save_file = os.path.join(
-                opt.save_folder, 'ckpt_best_acc_{acc}.pth'.format(acc=best_acc))
+                opt.save_folder, "ckpt_best_acc_{acc}.pth".format(acc=best_acc)
+            )
             save_model(classifier, optimizer, opt, epoch, save_file)
 
         if epoch % opt.save_freq == 0:
             save_file = os.path.join(
-                opt.save_folder, 'ckpt_epoch_{epoch}.pth'.format(epoch=epoch))
+                opt.save_folder, "ckpt_epoch_{epoch}.pth".format(epoch=epoch)
+            )
             save_model(classifier, optimizer, opt, epoch, save_file)
 
     print("best accuracy: {:.2f}".format(best_acc))
-    
+
     # save the last model
-    save_file = os.path.join(
-        opt.save_folder, 'last.pth')
+    save_file = os.path.join(opt.save_folder, "last.pth")
     save_model(classifier, optimizer, opt, opt.epochs, save_file)
 
 
