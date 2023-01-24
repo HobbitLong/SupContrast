@@ -7,7 +7,7 @@ from tqdm import tqdm
 import numpy as np
 import torch
 from torchvision import transforms
-from networks.resnet_big import SupConResNet, LinearClassifier
+from networks.resnet_big import SupConResNet, LinearClassifier, SupCEResNet
 import onnxruntime as ort
 from preprocess import (
     _letterbox,
@@ -75,7 +75,6 @@ def parse_args():
     parser.add_argument(
         "--output_path",
         type=str,
-        default="data/output/",
         help="Folder path for output video",
     )
     parser.add_argument(
@@ -116,46 +115,30 @@ def extract_bboxes(output, confidence):
     return boxes, classes, scores
 
 
-def load_models(args, device="cuda"):
-    # Load model
-    SupCon = SupConResNet(name=args.model)
-    classifier = LinearClassifier(name=args.model, num_classes=args.n_cls)
+def load_supcon(args, device="cuda"):
+    """Load the SupCon model and the classification head"""
+    model = SupCEResNet(name=args.model, num_classes=args.n_cls)
+    weights_encoder = torch.load(args.supcon_path, map_location="cpu")["model"]
+    weights_clf = torch.load(args.clf_path, map_location="cpu")["model"]
 
-    # Load supcon weights
-    ckpt_supcon = torch.load(args.supcon_path, map_location="cpu")
-    state_dict_supcon = ckpt_supcon["model"]
+    state_dict_encoder = {}
+    for k, v in weights_encoder.items():
+        k = k.replace("encoder.module.", "")
+        state_dict_encoder[k] = v
+    state_dict_encoder = {
+        k: v for k, v in state_dict_encoder.items() if "head" not in k
+    }
 
-    new_state_dict_supcon = {}
-    for k, v in state_dict_supcon.items():
-        k = k.replace("module.", "")
-        new_state_dict_supcon[k] = v
+    state_dict_clf = {}
+    for k, v in weights_clf.items():
+        k = k.replace("fc.", "")
+        state_dict_clf[k] = v
 
-    state_dict_supcon = new_state_dict_supcon
+    model.encoder.load_state_dict(state_dict_encoder)
+    model.fc.load_state_dict(state_dict_clf)
+    model = model.to(device)
 
-    SupCon.load_state_dict(new_state_dict_supcon)
-
-    # Load classification head weights
-    ckpt_clf = torch.load(args.clf_path, map_location="cpu")
-    state_dict_clf = ckpt_clf["model"]
-
-    new_state_dict_clf = {}
-    for k, v in state_dict_clf.items():
-        # k = k.replace("fc.", "")
-        new_state_dict_clf[k] = v
-
-    state_dict_clf = new_state_dict_clf
-
-    classifier.load_state_dict(state_dict_clf)
-
-    SupCon = SupCon.to(device)
-    classifier = classifier.to(device)
-
-    # Load Yolov7
-    yolo_session = load_onnx(args.yolo_path)
-    input_name = yolo_session.get_inputs()[0].name
-    output_name = yolo_session.get_outputs()[0].name
-
-    return SupCon, classifier, yolo_session, input_name, output_name
+    return model
 
 
 def main():
@@ -165,24 +148,29 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Load the models
-    supcon, clf, yolo_session, input_name, output_name = load_models(args, device)
-    supcon.eval()
-    clf.eval()
+    model = load_supcon(args, device)
+    yolo_session = load_onnx(args.yolo_path)
+    input_name, output_name = (
+        yolo_session.get_inputs()[0].name,
+        yolo_session.get_outputs()[0].name,
+    )
+    model.eval()
 
     # Open the video file
     cap = cv2.VideoCapture(args.video_path)
     assert cap.isOpened(), "Cannot capture source"
 
     # Create output video
-    out = cv2.VideoWriter(
-        "data/output/out.mp4",
-        cv2.VideoWriter_fourcc(*"mp4v"),
-        int(cap.get(cv2.CAP_PROP_FPS)),
-        (
-            int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
-            int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
-        ),
-    )
+    if args.output_path is not None:
+        out = cv2.VideoWriter(
+            args.output_path,
+            cv2.VideoWriter_fourcc(*"mp4v"),
+            int(cap.get(cv2.CAP_PROP_FPS)),
+            (
+                int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+                int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+            ),
+        )
     print(f"Processing at {int(cap.get(cv2.CAP_PROP_FPS))} fps")
 
     # Run models on video
@@ -225,14 +213,13 @@ def main():
                     if len(obj) > 0:
                         detected_bboxes.append(bbox)
                         obj = cv2.cvtColor(obj, cv2.COLOR_RGB2BGR)
-                        # obj = obj.transpose((2, 0, 1))  # HWC to CHW
                         obj = Image.fromarray(obj)
                         # Convert to torch tensor and normalize
                         obj = transforms(obj)
                         obj = obj.float().unsqueeze(0).to(device)
 
                         with torch.no_grad():
-                            output = clf(supcon.encoder(obj))
+                            output = model(obj)
                         output = output.detach().cpu().numpy()
                         # Get class with highest probability and its name
                         output = OBJECT_CLASSES[int(np.argmax(output, axis=1))]
@@ -252,10 +239,11 @@ def main():
                     2,
                 )
 
-        #
-
         # save video
-        out.write(frame)
+        if args.output_path is not None:
+            out.write(frame)
+        else:
+            cv2.imshow("frame", frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
@@ -264,7 +252,7 @@ def main():
         f"Processing complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s at {int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) / time_elapsed:.2f} fps"
     )
 
-    out.release()
+    out.release() if args.output_path is not None else None
     cap.release()
     cv2.destroyAllWindows()
 
