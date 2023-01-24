@@ -205,7 +205,7 @@ def _letterbox(
     return im, r, (dw, dh)
 
 
-def load_onnx(model_path: str) -> ort.InferenceSession:
+def load_onnx(model_path: str, device: str = "GPU") -> ort.InferenceSession:
     """Load ONNX model.
     Args:
         model_path: path to ONNX model
@@ -218,10 +218,13 @@ def load_onnx(model_path: str) -> ort.InferenceSession:
     print(f"Loading model from {model_path}...")
 
     # Load model in ONNXRuntime
-    if ort.get_device() == "GPU":
-        providers = ["CUDAExecutionProvider"]
-    else:
+    if device == "CPU":
         providers = ["CPUExecutionProvider"]
+    else:
+        if ort.get_device() == "GPU":
+            providers = ["CUDAExecutionProvider"]
+        else:
+            providers = ["CPUExecutionProvider"]
 
     session = ort.InferenceSession(model_path, providers=providers)
 

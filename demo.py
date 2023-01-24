@@ -1,5 +1,4 @@
 import argparse
-import os
 from PIL import Image
 import time
 import cv2
@@ -7,7 +6,7 @@ from tqdm import tqdm
 import numpy as np
 import torch
 from torchvision import transforms
-from networks.resnet_big import SupConResNet, LinearClassifier, SupCEResNet
+from networks.resnet_big import SupCEResNet
 import onnxruntime as ort
 from preprocess import (
     _letterbox,
