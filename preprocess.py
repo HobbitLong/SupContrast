@@ -56,18 +56,6 @@ def parse_args():
         default=0.8,
     )
 
-    parser.add_argument(
-        "--validation_split_percentage",
-        type=float,
-        default=0.1,
-    )
-
-    parser.add_argument(
-        "--test_split_percentage",
-        type=float,
-        default=0.1,
-    )
-
     return parser.parse_args()
 
 
@@ -295,7 +283,7 @@ def _sample_frames_from_video(
 
     # Sample frames
     prev_framecount = -1 - FRAME_DIFF  # for sampling frames not too close to each other
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))  # for train/val/test split
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))  # for train/val split
 
     for frame_count in tqdm(range(int(cap.get(cv2.CAP_PROP_FRAME_COUNT)))):
         ret, frame = cap.read()
@@ -324,10 +312,8 @@ def _sample_frames_from_video(
                 # Train/val/test split
                 if frame_count < splits["train"] * total_frames:
                     split = "train"
-                elif frame_count < (splits["train"] + splits["val"]) * total_frames:
-                    split = "val"
                 else:
-                    split = "test"
+                    split = "val"
 
                 # Crop and save frame
                 prev_framecount = frame_count
@@ -369,7 +355,7 @@ def sample_frames_from_videos(
     splits: dict,
 ):
     """
-    Sample frames from all videos in data_dir. Save samples frames to data_dir/protocol_name/samples while splitting into train/test/val.
+    Sample frames from all videos in data_dir. Save samples frames to data_dir/protocol_name/samples while splitting into train/val.
     """
     vid_dir = os.path.join(data_dir, protocol_name, "input_vids")
 
@@ -425,7 +411,7 @@ def augment_data(data_dir: str, protocol_name: str):
     """Perform data augmentation on sampled images."""
     samples_dir = os.path.join(data_dir, protocol_name, "samples")
     print("Augmenting samples...")
-    for split in ["train", "val", "test"]:
+    for split in ["train", "val"]:
         split_dir = os.path.join(samples_dir, split)
         for obj in os.listdir(split_dir):
             obj_dir = os.path.join(split_dir, obj)
@@ -451,8 +437,7 @@ def preprocess_pipeline():
     # Sample frames
     splits = {
         "train": args.train_split_percentage,
-        "val": args.validation_split_percentage,
-        "test": args.test_split_percentage,
+        "val": 1 - args.train_split_percentage,
     }
     sample_frames_from_videos(
         "data/input", args.s3_protocol_name, onnxruntime_session, splits
