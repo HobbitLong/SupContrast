@@ -17,7 +17,7 @@ from torchvision.utils import save_image
 
 CONF_THRESH = 0.1
 FRAME_DIFF = 4
-RESIZE = 224
+RESIZE = 32
 
 ### Load arguments
 def parse_args():
