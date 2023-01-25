@@ -5,3 +5,4 @@ boto3
 onnx
 onnxruntime-gpu
 tqdm
+ipykernel
