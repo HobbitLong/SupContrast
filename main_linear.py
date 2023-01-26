@@ -228,7 +228,7 @@ def train(train_loader, model, classifier, criterion, optimizer, epoch, opt):
     return losses.avg, top1.avg
 
 
-def validate(val_loader, model, classifier, criterion, opt):
+def validate(val_loader, model, classifier, criterion, opt, epoch, wandb_table=None):
     """validation"""
     model.eval()
     classifier.eval()
@@ -257,10 +257,13 @@ def validate(val_loader, model, classifier, criterion, opt):
             batch_time.update(time.time() - end)
             end = time.time()
 
-            # Take a random image from the batch and save it with its predicted label
-            # index = int(random.randint(0, len(labels)))
-            # sample = images[index]
-            # predicted_label = torch.argmax(output[index])
+            # Take a random image from the batch and log it with its predicted label to wandb
+
+            index = int(random.randint(0, len(labels)))
+            sample = images[index]
+            label = labels[index]
+            predicted_label = torch.argmax(output[index])
+            wandb_table.add_data(epoch, wandb.Image(sample), label, predicted_label)
             # save_image(sample, f"data/output/sample_{predicted_label}_{end}.png")
 
             if idx % opt.print_freq == 0:
@@ -302,6 +305,8 @@ def main():
     wandb_run.name = "supcon_linear_" + datetime.datetime.now().strftime(
         "%Y-%m-%d:%Hh%Mm"
     )
+    table_artifact = wandb.Artifact("images", type="table")
+    wandb_table = wandb.Table(columns=["epoch", "image", "label", "prediction"])
 
     # build data loader
     train_loader, val_loader = set_loader(opt)
@@ -330,7 +335,9 @@ def main():
         wandb.log({"train_loss": loss, "train_acc": acc})
 
         # eval for one epoch
-        loss, val_acc = validate(val_loader, model, classifier, criterion, opt)
+        loss, val_acc = validate(
+            val_loader, model, classifier, criterion, opt, epoch, wandb_table
+        )
 
         wandb.log({"val_loss": loss, "val_acc": val_acc})
         if val_acc > best_acc:
@@ -351,9 +358,10 @@ def main():
     # save the last model
     save_file = os.path.join(opt.save_folder, "last.pth")
     save_model(classifier, optimizer, opt, opt.epochs, save_file)
-    art = wandb.Artifact("supcon_linear", type="model")
-    art.add_file(save_file)
-    wandb.log_artifact(art)
+
+    table_artifact.add(wandb_table, "table")
+    wandb_run.log_artifact(table_artifact)
+    wandb.finish()
 
 
 if __name__ == "__main__":
