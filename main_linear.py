@@ -258,11 +258,10 @@ def validate(val_loader, model, classifier, criterion, opt):
             end = time.time()
 
             # Take a random image from the batch and save it with its predicted label
-            index = int(random.randint(0, len(labels)))
-            sample = images[index]
-            print("random index", index)
-            predicted_label = torch.argmax(output[index])
-            save_image(sample, f"data/output/sample_{predicted_label}_{end}.png")
+            # index = int(random.randint(0, len(labels)))
+            # sample = images[index]
+            # predicted_label = torch.argmax(output[index])
+            # save_image(sample, f"data/output/sample_{predicted_label}_{end}.png")
 
             if idx % opt.print_freq == 0:
                 print(

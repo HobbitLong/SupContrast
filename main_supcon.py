@@ -323,6 +323,7 @@ def main():
     wandb.login()
     wandb_run = wandb.init(project="supcon", config=vars(opt))
     wandb_run.name = "supcon_" + datetime.datetime.now().strftime("%Y-%m-%d:%Hh%Mm")
+    wandb.watch(model, log_freq=100)
 
     # training routine
     for epoch in range(1, opt.epochs + 1):
@@ -339,16 +340,6 @@ def main():
         logger.log_value("learning_rate", optimizer.param_groups[0]["lr"], epoch)
         wandb_run.log({"loss": loss, "learning_rate": optimizer.param_groups[0]["lr"]})
 
-        # Log a random image from the training set
-        wandb_run.log(
-            {
-                "random_training_image": [
-                    wandb.Image(
-                        train_loader.dataset[0][0], caption="Random training image"
-                    )
-                ]
-            }
-        )
 
         if epoch % opt.save_freq == 0:
             save_file = os.path.join(
