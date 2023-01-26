@@ -8,6 +8,8 @@ import os
 from PIL import Image
 import numpy as np
 import random
+import wandb
+import datetime
 
 import torch
 import torch.backends.cudnn as cudnn
@@ -240,7 +242,6 @@ def validate(val_loader, model, classifier, criterion, opt):
         for idx, (images, labels) in enumerate(val_loader):
             images = images.float().cuda()
             labels = labels.cuda()
-            print(labels)
             bsz = labels.shape[0]
 
             # forward
@@ -296,6 +297,13 @@ def main():
     best_acc = 0
     opt = parse_option()
 
+    # Log
+    wandb.login()
+    wandb_run = wandb.init(project="supcon", config=vars(opt))
+    wandb_run.name = "supcon_linear_" + datetime.datetime.now().strftime(
+        "%Y-%m-%d:%Hh%Mm"
+    )
+
     # build data loader
     train_loader, val_loader = set_loader(opt)
 
@@ -320,9 +328,12 @@ def main():
                 epoch, time2 - time1, acc
             )
         )
+        wandb.log({"train_loss": loss, "train_acc": acc})
 
         # eval for one epoch
         loss, val_acc = validate(val_loader, model, classifier, criterion, opt)
+
+        wandb.log({"val_loss": loss, "val_acc": val_acc})
         if val_acc > best_acc:
             best_acc = val_acc
             save_file = os.path.join(
@@ -341,6 +352,9 @@ def main():
     # save the last model
     save_file = os.path.join(opt.save_folder, "last.pth")
     save_model(classifier, optimizer, opt, opt.epochs, save_file)
+    art = wandb.Artifact("supcon_linear", type="model")
+    art.add_file(save_file)
+    wandb.log_artifact(art)
 
 
 if __name__ == "__main__":
