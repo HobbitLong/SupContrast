@@ -26,6 +26,23 @@ try:
 except ImportError:
     pass
 
+CLASSES = [
+    "50mL Tube",
+    "50mL Tube Rack",
+    "5mL Syringe",
+    "8 Channel Finnett Pipette",
+    "96 Well Plate",
+    "Eppendorf Repeater",
+    "Micropipette",
+    "Picogreen Buffer",
+    "Picogreen Kit",
+    "Pipette Tip Box",
+    "Reservoir",
+    "Styrofoam Tube Rack",
+    "Thrash",
+    "Vortexer",
+]
+
 
 def parse_option():
     parser = argparse.ArgumentParser("argument for training")
@@ -261,8 +278,8 @@ def validate(val_loader, model, classifier, criterion, opt, epoch, wandb_table=N
 
             index = int(random.randint(0, len(labels)))
             sample = images[index]
-            label = labels[index]
-            predicted_label = torch.argmax(output[index])
+            label = CLASSES[labels[index]]
+            predicted_label = CLASSES[torch.argmax(output[index])]
             wandb_table.add_data(epoch, wandb.Image(sample), label, predicted_label)
             # save_image(sample, f"data/output/sample_{predicted_label}_{end}.png")
 
