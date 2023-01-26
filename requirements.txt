@@ -6,3 +6,4 @@ onnx
 onnxruntime-gpu
 tqdm
 ipykernel
+wandb
