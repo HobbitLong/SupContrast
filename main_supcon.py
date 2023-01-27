@@ -367,6 +367,7 @@ def main():
     art = wandb.Artifact("supcon", type="model")
     art.add_file(save_file)
     wandb.log_artifact(art)
+    wandb.finish()
 
 
 if __name__ == "__main__":
