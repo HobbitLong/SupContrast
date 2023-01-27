@@ -38,6 +38,9 @@ def parse_option():
     parser.add_argument(
         "--epochs", type=int, default=1000, help="number of training epochs"
     )
+    parser.add_argument(
+        "--rand_augment", help="use rand augment", type=bool, default=False
+    )
 
     # optimization
     parser.add_argument(
@@ -180,16 +183,27 @@ def set_loader(opt):
         raise ValueError("dataset not supported: {}".format(opt.dataset))
     normalize = transforms.Normalize(mean=mean, std=std)
 
-    train_transform = transforms.Compose(
-        [
-            transforms.RandomResizedCrop(size=opt.size, scale=(0.2, 1.0)),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8),
-            transforms.RandomGrayscale(p=0.2),
-            transforms.ToTensor(),
-            normalize,
-        ]
-    )
+    if not opt.rand_augment:
+        train_transform = transforms.Compose(
+            [
+                transforms.RandomResizedCrop(size=opt.size, scale=(0.2, 1.0)),
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomApply(
+                    [transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8
+                ),
+                transforms.RandomGrayscale(p=0.2),
+                transforms.ToTensor(),
+                normalize,
+            ]
+        )
+    else:
+        train_transform = transforms.Compose(
+            [
+                transforms.RandAugment(num_ops=2, magnitude=9),
+                transforms.ToTensor(),
+                normalize,
+            ]
+        )
 
     if opt.dataset == "cifar10":
         train_dataset = datasets.CIFAR10(
@@ -339,7 +353,6 @@ def main():
         logger.log_value("loss", loss, epoch)
         logger.log_value("learning_rate", optimizer.param_groups[0]["lr"], epoch)
         wandb_run.log({"loss": loss, "learning_rate": optimizer.param_groups[0]["lr"]})
-
 
         if epoch % opt.save_freq == 0:
             save_file = os.path.join(

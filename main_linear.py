@@ -318,7 +318,7 @@ def main():
 
     # Log
     wandb.login()
-    wandb_run = wandb.init(project="supcon", config=vars(opt))
+    wandb_run = wandb.init(project="supcon_linear", config=vars(opt))
     wandb_run.name = "supcon_linear_" + datetime.datetime.now().strftime(
         "%Y-%m-%d:%Hh%Mm"
     )
