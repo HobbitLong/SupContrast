@@ -13,8 +13,7 @@ metric = {"name": "loss", "goal": "minimize"}
 parameters_dict = {
     "batch_size": {"values": [16, 32, 64, 128, 256]},
     "learning_rate": {"values": [0.001, 0.01, 0.1, 0.5]},
-    # "rand_augment": {"values": [True, False]},
-}
+}  # "rand_augment": {"values": [True, False]},
 
 parameters_dict.update(
     {
@@ -25,7 +24,7 @@ parameters_dict.update(
     }
 )
 
-N_SWEEPS = 10
+N_SWEEPS = 1
 SWEEP_CONFIG = {"method": "random"}
 SWEEP_CONFIG["metric"] = metric
 SWEEP_CONFIG["parameters"] = parameters_dict
@@ -36,6 +35,7 @@ def tune_train(config=None):
         opt = parse_option()
 
         config = wandb.config
+
         # Add config as a new attributes to opt
         for k, v in config.items():
             setattr(opt, k, v)
@@ -55,6 +55,7 @@ def tune_train(config=None):
             # train for one epoch
             time1 = time.time()
             loss = train(train_loader, model, criterion, optimizer, epoch, opt)
+            wandb.log({"loss": loss})
             time2 = time.time()
             print("epoch {}, total time {:.2f}".format(epoch, time2 - time1))
 

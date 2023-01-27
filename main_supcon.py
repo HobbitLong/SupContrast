@@ -16,6 +16,7 @@ from torchvision import transforms, datasets
 from util import TwoCropTransform, AverageMeter
 from util import adjust_learning_rate, warmup_learning_rate
 from util import set_optimizer, save_model
+from util import load_config
 from networks.resnet_big import SupConResNet
 from losses import SupConLoss
 
@@ -36,7 +37,7 @@ def parse_option():
         "--num_workers", type=int, default=16, help="num of workers to use"
     )
     parser.add_argument(
-        "--epochs", type=int, default=1000, help="number of training epochs"
+        "--epochs", type=int, default=100, help="number of training epochs"
     )
     parser.add_argument(
         "--rand_augment", help="use rand augment", type=bool, default=False
@@ -49,7 +50,7 @@ def parse_option():
     parser.add_argument(
         "--lr_decay_epochs",
         type=str,
-        default="700,800,900",
+        default="70,80,90",
         help="where to decay lr, can be a list",
     )
     parser.add_argument(
@@ -63,7 +64,7 @@ def parse_option():
     parser.add_argument(
         "--dataset",
         type=str,
-        default="cifar10",
+        default="path",
         choices=["cifar10", "cifar100", "path"],
         help="dataset",
     )
@@ -74,7 +75,10 @@ def parse_option():
         "--std", type=str, help="std of dataset in path in form of str tuple"
     )
     parser.add_argument(
-        "--data_folder", type=str, default=None, help="path to custom dataset"
+        "--data_folder",
+        type=str,
+        default="./data/input/15objects_lab/samples/train",
+        help="path to custom dataset",
     )
     parser.add_argument(
         "--size", type=int, default=32, help="parameter for RandomResizedCrop"
@@ -321,6 +325,7 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
 
 def main():
     opt = parse_option()
+    # opt = load_config("./configs/supcon.yaml")
 
     # build data loader
     train_loader = set_loader(opt)
