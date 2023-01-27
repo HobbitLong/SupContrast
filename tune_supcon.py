@@ -13,7 +13,7 @@ metric = {"name": "loss", "goal": "minimize"}
 parameters_dict = {
     "batch_size": {"values": [16, 32, 64, 128, 256]},
     "learning_rate": {"values": [0.001, 0.01, 0.1, 0.5]},
-    "rand_augment": {"values": [True, False]},
+    # "rand_augment": {"values": [True, False]},
 }
 
 parameters_dict.update(
