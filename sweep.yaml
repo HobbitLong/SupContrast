@@ -1,0 +1,26 @@
+program: main_supcon.py
+project: supcon
+command: 
+  - C:\Users\Lukas Mahieu\Desktop\Projects\LabLightAR\SupContrast\.venv
+  - ${interpreter}
+  - ${program}
+  - ${args}
+method: random
+metric:
+  goal: minimize
+  name: loss
+early_terminate:
+  type: hyperband
+  min_iter: 15
+parameters:
+  batch_size:
+    values:
+      - 16
+      - 32
+      - 64
+      - 128
+      - 256
+  learning_rate:
+    max: 0.5
+    min: 0.05
+    distribution: uniform
