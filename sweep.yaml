@@ -1,6 +1,6 @@
 program: main_supcon.py
 project: supcon
-method: grid
+method: bayes
 metric:
   goal: minimize
   name: loss
@@ -11,14 +11,12 @@ parameters:
   batch_size:
     value: 16
   learning_rate:
-    value: 0.1
-  rand_augment:
     values:
-      - "None"
-      - "RandAugment"
-      - "AutoAugment"
-      - "TrivialAugmentWide"
-      - "AugMix"
+      min: 0.0001
+      max: 0.1
+      distribution: uniform
+  rand_augment:
+    value: None
   temp:
     value: 0.1
   epochs:
