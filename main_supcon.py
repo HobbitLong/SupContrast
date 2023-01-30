@@ -39,7 +39,11 @@ def parse_option():
         "--epochs", type=int, default=100, help="number of training epochs"
     )
     parser.add_argument(
-        "--rand_augment", help="use rand augment", type=bool, default=False
+        "--rand_augmentations",
+        help="use random augmentions",
+        type=str,
+        default="None",
+        choices=["None", "RandAugment", "AutoAugment", "TrivialAugmentWide", "AugMix"],
     )
 
     # optimization
@@ -186,27 +190,23 @@ def set_loader(opt):
         raise ValueError("dataset not supported: {}".format(opt.dataset))
     normalize = transforms.Normalize(mean=mean, std=std)
 
-    if not opt.rand_augment:
-        train_transform = transforms.Compose(
-            [
-                transforms.RandomResizedCrop(size=opt.size, scale=(0.2, 1.0)),
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomApply(
-                    [transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8
-                ),
-                transforms.RandomGrayscale(p=0.2),
-                transforms.ToTensor(),
-                normalize,
-            ]
-        )
-    else:
-        train_transform = transforms.Compose(
-            [
-                transforms.RandAugment(num_ops=2, magnitude=9),
-                transforms.ToTensor(),
-                normalize,
-            ]
-        )
+    augmentations = {
+        "None": [
+            transforms.RandomResizedCrop(size=opt.size, scale=(0.2, 1.0)),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8),
+            transforms.RandomGrayscale(p=0.2),
+        ],
+        "RandAugment": [transforms.RandAugment()],
+        "AutoAugment": [transforms.AutoAugment()],
+        "TrivialAugmentWide": [transforms.TrivialAugmentWide()],
+        "AugMix": [transforms.AugMix()],
+    }
+
+    train_transform = transforms.Compose(
+        augmentations.get(opt.rand_augmentations, [])
+        + [transforms.ToTensor(), normalize]
+    )
 
     if opt.dataset == "cifar10":
         train_dataset = datasets.CIFAR10(
