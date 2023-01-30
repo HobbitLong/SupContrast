@@ -11,10 +11,9 @@ parameters:
   batch_size:
     value: 16
   learning_rate:
-    values:
-      min: 0.0001
-      max: 0.1
-      distribution: uniform
+    min: 0.0001
+    max: 0.1
+    distribution: uniform
   rand_augment:
     value: None
   temp:
