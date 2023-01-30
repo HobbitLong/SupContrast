@@ -276,7 +276,7 @@ def validate(val_loader, model, classifier, criterion, opt, epoch, wandb_table=N
 
             # Take a random image from the batch and log it with its predicted label to wandb
 
-            index = int(random.randint(0, len(labels)))
+            index = int(random.randint(0, len(labels) - 1))
             sample = images[index]
             label = CLASSES[labels[index]]
             predicted_label = CLASSES[torch.argmax(output[index])]
