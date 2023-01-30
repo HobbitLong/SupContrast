@@ -1,6 +1,6 @@
 program: main_supcon.py
 project: supcon
-method: bayes
+method: grid
 metric:
   goal: minimize
   name: loss
