@@ -1,6 +1,6 @@
 program: main_supcon.py
 project: supcon
-method: random
+method: bayes
 metric:
   goal: minimize
   name: loss
@@ -9,16 +9,18 @@ early_terminate:
   min_iter: 15
 parameters:
   batch_size:
-    values:
-      - 16
-      - 32
-      - 64
-      - 128
-      - 256
+    value: 32
   learning_rate:
-    max: 0.5
-    min: 0.05
+    max: 0.1
+    min: 0.0001
     distribution: uniform
+  rand_augment:
+    values:
+      - "None"
+      - "RandAugment"
+      - "AutoAugment"
+      - "TrivialAugmentWide"
+      - "AugMix"
   temp:
     value: 0.1
   epochs:
