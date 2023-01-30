@@ -9,7 +9,7 @@ early_terminate:
   min_iter: 15
 parameters:
   batch_size:
-    value: 32
+    value: 16
   learning_rate:
     value: 0.1
   rand_augment:
