@@ -19,3 +19,17 @@ parameters:
     max: 0.5
     min: 0.05
     distribution: uniform
+  temp:
+    value: 0.1
+  epochs:
+    value: 100
+  lr_decay_epoch:
+    value: 70,80,90
+  dataset:
+    value: path
+  data_folder:
+    value: ./data/input/15objects_lab/samples/train
+  mean:
+    value: (0.4914, 0.4822, 0.4465)
+  std:
+    value: (0.2675, 0.2565, 0.2761)
