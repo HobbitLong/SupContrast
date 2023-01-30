@@ -1,10 +1,5 @@
 program: main_supcon.py
 project: supcon
-command: 
-  - C:\Users\Lukas Mahieu\Desktop\Projects\LabLightAR\SupContrast\.venv
-  - ${interpreter}
-  - ${program}
-  - ${args}
 method: random
 metric:
   goal: minimize
