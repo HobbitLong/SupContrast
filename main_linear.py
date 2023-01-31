@@ -297,7 +297,7 @@ def validate(val_loader, model, classifier, criterion, opt, epoch, wandb_table=N
                     )
                 )
 
-    print(" * Acc@1 {top1.avg:.3f}".format(top1=top1))
+    print(" * Acc@1 epoch val {top1.avg:.3f}".format(top1=top1))
     return losses.avg, top1.avg
 
 
