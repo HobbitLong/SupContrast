@@ -21,8 +21,6 @@ parameters:
     value: 14
   ckpt:
     value: data/weights/supcon.pth
-  temp:
-    value: 0.1
   epochs:
     value: 15
   lr_decay_epoch:
@@ -33,7 +31,3 @@ parameters:
     value: ./data/input/15objects_lab/samples/train
   val_folder:
     value: ./data/input/15objects_lab/samples/val
-  mean:
-    value: (0.4914, 0.4822, 0.4465)
-  std:
-    value: (0.2675, 0.2565, 0.2761)
