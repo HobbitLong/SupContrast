@@ -3,7 +3,7 @@ project: supcon_linear
 method: bayes
 metric:
   goal: maximize
-  name: Acc@1 epoch val
+  name: val_acc
 early_terminate:
   type: hyperband
   min_iter: 15
@@ -15,7 +15,7 @@ parameters:
       - 64
   learning_rate:
     min: 0.0001
-    max: 0.5
+    max: 0.1
     distribution: uniform
   n_cls:
     value: 14
