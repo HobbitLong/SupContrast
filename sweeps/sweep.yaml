@@ -1,4 +1,4 @@
-program: main_supcon.py
+program: ../main_supcon.py
 project: supcon
 method: bayes
 metric:

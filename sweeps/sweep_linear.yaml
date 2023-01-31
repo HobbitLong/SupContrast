@@ -1,0 +1,39 @@
+program: ../main_linear.py
+project: supcon_linear
+method: bayes
+metric:
+  goal: maximize
+  name: Acc@1 epoch val
+early_terminate:
+  type: hyperband
+  min_iter: 15
+parameters:
+  batch_size:
+    values: 
+      - 16
+      - 32
+      - 64
+  learning_rate:
+    min: 0.0001
+    max: 0.5
+    distribution: uniform
+  n_cls:
+    value: 14
+  ckpt:
+    value: data/weights/supcon.pth
+  temp:
+    value: 0.1
+  epochs:
+    value: 15
+  lr_decay_epoch:
+    value: 8,11,13
+  dataset:
+    value: path
+  data_folder:
+    value: ./data/input/15objects_lab/samples/train
+  val_folder:
+    value: ./data/input/15objects_lab/samples/val
+  mean:
+    value: (0.4914, 0.4822, 0.4465)
+  std:
+    value: (0.2675, 0.2565, 0.2761)
