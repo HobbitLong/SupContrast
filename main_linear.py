@@ -8,6 +8,8 @@ import os
 from PIL import Image
 import numpy as np
 import random
+import wandb
+import datetime
 
 import torch
 import torch.backends.cudnn as cudnn
@@ -23,6 +25,23 @@ try:
     from apex import amp, optimizers
 except ImportError:
     pass
+
+CLASSES = [
+    "50mL Tube",
+    "50mL Tube Rack",
+    "5mL Syringe",
+    "8 Channel Finnett Pipette",
+    "96 Well Plate",
+    "Eppendorf Repeater",
+    "Micropipette",
+    "Picogreen Buffer",
+    "Picogreen Kit",
+    "Pipette Tip Box",
+    "Reservoir",
+    "Styrofoam Tube Rack",
+    "Thrash",
+    "Vortexer",
+]
 
 
 def parse_option():
@@ -226,7 +245,7 @@ def train(train_loader, model, classifier, criterion, optimizer, epoch, opt):
     return losses.avg, top1.avg
 
 
-def validate(val_loader, model, classifier, criterion, opt):
+def validate(val_loader, model, classifier, criterion, opt, epoch, wandb_table=None):
     """validation"""
     model.eval()
     classifier.eval()
@@ -240,7 +259,6 @@ def validate(val_loader, model, classifier, criterion, opt):
         for idx, (images, labels) in enumerate(val_loader):
             images = images.float().cuda()
             labels = labels.cuda()
-            print(labels)
             bsz = labels.shape[0]
 
             # forward
@@ -256,12 +274,14 @@ def validate(val_loader, model, classifier, criterion, opt):
             batch_time.update(time.time() - end)
             end = time.time()
 
-            # Take a random image from the batch and save it with its predicted label
-            index = int(random.randint(0, len(labels)))
+            # Take a random image from the batch and log it with its predicted label to wandb
+
+            index = int(random.randint(0, len(labels) - 1))
             sample = images[index]
-            print("random index", index)
-            predicted_label = torch.argmax(output[index])
-            save_image(sample, f"data/output/sample_{predicted_label}_{end}.png")
+            label = CLASSES[labels[index]]
+            predicted_label = CLASSES[torch.argmax(output[index])]
+            wandb_table.add_data(epoch, wandb.Image(sample), label, predicted_label)
+            # save_image(sample, f"data/output/sample_{predicted_label}_{end}.png")
 
             if idx % opt.print_freq == 0:
                 print(
@@ -277,7 +297,7 @@ def validate(val_loader, model, classifier, criterion, opt):
                     )
                 )
 
-    print(" * Acc@1 {top1.avg:.3f}".format(top1=top1))
+    print(" * Acc@1 epoch val {top1.avg:.3f}".format(top1=top1))
     return losses.avg, top1.avg
 
 
@@ -295,6 +315,15 @@ def save_image(sample, filename):
 def main():
     best_acc = 0
     opt = parse_option()
+
+    # Log
+    wandb.login()
+    wandb_run = wandb.init(project="supcon_linear", config=vars(opt))
+    wandb_run.name = "supcon_linear_" + datetime.datetime.now().strftime(
+        "%Y-%m-%d:%Hh%Mm"
+    )
+    table_artifact = wandb.Artifact("images", type="table")
+    wandb_table = wandb.Table(columns=["epoch", "image", "label", "prediction"])
 
     # build data loader
     train_loader, val_loader = set_loader(opt)
@@ -320,9 +349,14 @@ def main():
                 epoch, time2 - time1, acc
             )
         )
+        wandb.log({"train_loss": loss, "train_acc": acc})
 
         # eval for one epoch
-        loss, val_acc = validate(val_loader, model, classifier, criterion, opt)
+        loss, val_acc = validate(
+            val_loader, model, classifier, criterion, opt, epoch, wandb_table
+        )
+
+        wandb.log({"val_loss": loss, "val_acc": val_acc})
         if val_acc > best_acc:
             best_acc = val_acc
             save_file = os.path.join(
@@ -341,6 +375,10 @@ def main():
     # save the last model
     save_file = os.path.join(opt.save_folder, "last.pth")
     save_model(classifier, optimizer, opt, opt.epochs, save_file)
+
+    table_artifact.add(wandb_table, "table")
+    wandb_run.log_artifact(table_artifact)
+    wandb.finish()
 
 
 if __name__ == "__main__":

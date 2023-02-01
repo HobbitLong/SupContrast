@@ -1,0 +1,32 @@
+program: main_supcon.py
+project: supcon
+method: bayes
+metric:
+  goal: minimize
+  name: loss
+early_terminate:
+  type: hyperband
+  min_iter: 15
+parameters:
+  batch_size:
+    value: 16
+  learning_rate:
+    min: 0.0001
+    max: 0.1
+    distribution: uniform
+  rand_augment:
+    value: None
+  temp:
+    value: 0.1
+  epochs:
+    value: 100
+  lr_decay_epoch:
+    value: 70,80,90
+  dataset:
+    value: path
+  data_folder:
+    value: ./data/input/15objects_lab/samples/train
+  mean:
+    value: (0.4914, 0.4822, 0.4465)
+  std:
+    value: (0.2675, 0.2565, 0.2761)

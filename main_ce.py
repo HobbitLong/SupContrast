@@ -161,6 +161,7 @@ def set_loader(opt):
     val_transform = transforms.Compose(
         [
             transforms.ToTensor(),
+            transforms.Resize((32, 32)),
             normalize,
         ]
     )
@@ -184,7 +185,7 @@ def set_loader(opt):
             root=opt.data_folder, transform=train_transform
         )
         val_dataset = datasets.ImageFolder(
-            root=opt.val_folder, transform=train_transform
+            root=opt.val_folder, transform=val_transform
         )
     else:
         raise ValueError(opt.dataset)
@@ -199,7 +200,7 @@ def set_loader(opt):
         sampler=train_sampler,
     )
     val_loader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=256, shuffle=False, num_workers=8, pin_memory=True
+        val_dataset, batch_size=256, shuffle=True, num_workers=opt.num_workers, pin_memory=True
     )
 
     return train_loader, val_loader
