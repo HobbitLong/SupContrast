@@ -40,7 +40,6 @@ def parse_args():
 def load_supcon(args, device="cuda"):
     """Load the SupCon model and the classification head"""
     n_cls = len(os.listdir(args.data_folder))
-    print("Number of classes: %d" % n_cls)
     model = SupCEResNet(name="resnet50", num_classes=n_cls)
     weights_encoder = torch.load(args.supcon_path, map_location="cpu")["model"]
     weights_clf = torch.load(args.clf_path, map_location="cpu")["model"]
