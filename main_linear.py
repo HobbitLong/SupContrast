@@ -26,35 +26,23 @@ try:
 except ImportError:
     pass
 
-CLASSES = [
-    "50mL Tube",
-    "50mL Tube Rack",
-    "5mL Syringe",
-    "8 Channel Finnett Pipette",
-    "96 Well Plate",
-    "Eppendorf Repeater",
-    "Micropipette",
-    "Picogreen Buffer",
-    "Picogreen Kit",
-    "Pipette Tip Box",
-    "Reservoir",
-    "Styrofoam Tube Rack",
-    "Thrash",
-    "Vortexer",
-]
 
-
-def parse_option():
+def parse_option(config=None):
     parser = argparse.ArgumentParser("argument for training")
 
     parser.add_argument("--print_freq", type=int, default=10, help="print frequency")
     parser.add_argument("--save_freq", type=int, default=10, help="save frequency")
     parser.add_argument("--batch_size", type=int, default=32, help="batch_size")
     parser.add_argument(
-        "--num_workers", type=int, default=16, help="num of workers to use"
+        "--num_workers", type=int, default=8, help="num of workers to use"
     )
     parser.add_argument(
         "--epochs", type=int, default=14, help="number of training epochs"
+    )
+    parser.add_argument(
+        "--classnames",
+        type=str,
+        help="comma separated list of classnames",
     )
     parser.add_argument("--wandb", action="store_true", help="using wandb")
     # optimization
@@ -78,7 +66,7 @@ def parse_option():
     parser.add_argument(
         "--dataset",
         type=str,
-        default="cifar10",
+        default="path",
         choices=["cifar10", "cifar100", "path"],
         help="dataset",
     )
@@ -93,19 +81,29 @@ def parse_option():
         "--ckpt", type=str, default="", help="path to pre-trained model"
     )
     parser.add_argument(
-        "--n_cls", type=int, default=0, help="number of classes in the dataset"
-    )
-    parser.add_argument(
-        "--data_folder", type=str, default="./datasets/", help="path to custom dataset"
+        "--data_folder", type=str, default="", help="path to custom dataset"
     )
     parser.add_argument(
         "--val_folder",
         type=str,
-        default="./datasets/",
         help="path to custom val dataset",
     )
 
     opt = parser.parse_args()
+
+    if config is not None:
+        # Update options with config
+        for key, value in config["linear"].items():
+            setattr(opt, key, value)
+        for key, value in config["common"].items():
+            setattr(opt, key, value)
+
+        opt.ckpt = "data/weights/supcon.pth"
+        assert os.path.exists(
+            opt.ckpt
+        ), f"Trained supcon model not found in {opt.ckpt}. Did something go wrong?"
+
+        print(f"Running linear evaluation with config: {opt}")
 
     # set the path according to the environment
 
@@ -142,7 +140,9 @@ def parse_option():
     elif opt.dataset == "cifar100":
         opt.n_cls = 100
     elif opt.dataset == "path":
-        assert opt.n_cls > 0
+        opt.classnames = os.listdir(opt.data_folder)
+        opt.n_cls = len(opt.classnames)
+        print("Number of classes: ", opt.n_cls)
     else:
         raise ValueError("dataset not supported: {}".format(opt.dataset))
 
@@ -279,8 +279,8 @@ def validate(val_loader, model, classifier, criterion, opt, epoch, wandb_table=N
             if opt.wandb:
                 index = int(random.randint(0, len(labels) - 1))
                 sample = images[index]
-                label = CLASSES[labels[index]]
-                predicted_label = CLASSES[torch.argmax(output[index])]
+                label = opt.classnames[labels[index]]
+                predicted_label = opt.classnames[torch.argmax(output[index])]
                 wandb_table.add_data(epoch, wandb.Image(sample), label, predicted_label)
             # save_image(sample, f"data/output/sample_{predicted_label}_{end}.png")
 
@@ -313,9 +313,9 @@ def save_image(sample, filename):
     im.save(filename)
 
 
-def main():
+def main(config=None):
     best_acc = 0
-    opt = parse_option()
+    opt = parse_option(config)
 
     # Log
     wandb_table = None
@@ -363,22 +363,21 @@ def main():
             wandb.log({"val_loss": loss, "val_acc": val_acc})
         if val_acc > best_acc:
             best_acc = val_acc
-            save_file = os.path.join(
-                opt.save_folder, "ckpt_best_acc_{acc}.pth".format(acc=best_acc)
-            )
+            save_file = "data/weights/clf.pth"
+            print("best accuracy: {:.2f}, saving to {}".format(best_acc, save_file))
             save_model(classifier, optimizer, opt, epoch, save_file)
 
-        if epoch % opt.save_freq == 0:
-            save_file = os.path.join(
-                opt.save_folder, "ckpt_epoch_{epoch}.pth".format(epoch=epoch)
-            )
-            save_model(classifier, optimizer, opt, epoch, save_file)
+        # if epoch % opt.save_freq == 0:
+        #     save_file = os.path.join(
+        #         opt.save_folder, "ckpt_epoch_{epoch}.pth".format(epoch=epoch)
+        #     )
+        #     save_model(classifier, optimizer, opt, epoch, save_file)
 
     print("best accuracy: {:.2f}".format(best_acc))
 
     # save the last model
-    save_file = os.path.join(opt.save_folder, "last.pth")
-    save_model(classifier, optimizer, opt, opt.epochs, save_file)
+    # save_file = os.path.join(opt.save_folder, "last.pth")
+    # save_model(classifier, optimizer, opt, opt.epochs, save_file)
 
     if opt.wandb:
         table_artifact.add(wandb_table, "table")

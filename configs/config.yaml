@@ -1,0 +1,15 @@
+common:
+  data_folder: 'data/input/15objects_lab/samples/train'
+  val_folder: 'data/input/15objects_lab/samples/val'
+supcon:
+  batch_size: 16
+  learning_rate: 0.1
+  epochs: 80
+  lr_decay_epochs: '50, 60, 70'
+linear:
+  batch_size: 32
+  learning_rate: 0.5
+  epochs: 10
+  lr_decay_epochs: '5, 7, 9'
+
+  

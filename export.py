@@ -11,32 +11,10 @@ import onnxruntime as ort
 from networks.resnet_big import SupCEResNet
 from preprocess import load_onnx
 
-CLASSES = [
-    "50mL Tube",
-    "50mL Tube Rack",
-    "5mL Syringe",
-    "8 Channel Finnett Pipette",
-    "96 Well Plate",
-    "Eppendorf Repeater",
-    "Micropipette",
-    "Picogreen Buffer",
-    "Picogreen Kit",
-    "Pipette Tip Box",
-    "Reservoir",
-    "Styrofoam Tube Rack",
-    "Thrash",
-    "Vortexer",
-]
-
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--model",
-        help="Model architecture",
-        default="resnet50",
-        type=str,
-    )
+
     parser.add_argument(
         "--supcon_path",
         help="Path to SupCon network weights",
@@ -55,13 +33,15 @@ def parse_args():
         default="data/weights/supcon.onnx",
         type=str,
     )
-
+    parser.add_argument("--data_folder", help="Path to the data directory", type=str)
     return parser.parse_args()
 
 
 def load_supcon(args, device="cuda"):
     """Load the SupCon model and the classification head"""
-    model = SupCEResNet(name=args.model, num_classes=len(CLASSES))
+    n_cls = len(os.listdir(args.data_folder))
+    print("Number of classes: %d" % n_cls)
+    model = SupCEResNet(name="resnet50", num_classes=n_cls)
     weights_encoder = torch.load(args.supcon_path, map_location="cpu")["model"]
     weights_clf = torch.load(args.clf_path, map_location="cpu")["model"]
 
@@ -141,12 +121,19 @@ def check_onnx_runtime(output_path, model, x):
     print("Predictions are equivalent between PyTorch and ONNX Runtime!")
 
 
-def main():
+def main(config=None):
     # Parser arguments
+    print("Exporting to ONNX format...")
     args = parse_args()
+    if config is not None:
+        for k, v in config["common"].items():
+            setattr(args, k, v)
+        print(f'Running with config: {config["common"]}')
 
     # Load the SupCon model
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    if device == "cpu":
+        print("WARNING: Running on CPU. CUDA not found.")
     model = load_supcon(args, device=device)
     model.eval()
 

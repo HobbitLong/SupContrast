@@ -33,11 +33,12 @@ def parse_option():
     parser.add_argument("--save_freq", type=int, default=50, help="save frequency")
     parser.add_argument("--batch_size", type=int, default=256, help="batch_size")
     parser.add_argument(
-        "--num_workers", type=int, default=16, help="num of workers to use"
+        "--num_workers", type=int, default=8, help="num of workers to use"
     )
     parser.add_argument(
         "--epochs", type=int, default=100, help="number of training epochs"
     )
+    parser.add_argument("--wandb", action="store_true", help="using wandb")
     parser.add_argument(
         "--rand_augmentations",
         help="use random augmentions",
@@ -72,15 +73,21 @@ def parse_option():
         help="dataset",
     )
     parser.add_argument(
-        "--mean", type=str, help="mean of dataset in path in form of str tuple"
+        "--mean",
+        type=str,
+        help="mean of dataset in path in form of str tuple",
+        default="(0.4914, 0.4822, 0.4465)",
     )
     parser.add_argument(
-        "--std", type=str, help="std of dataset in path in form of str tuple"
+        "--std",
+        type=str,
+        help="std of dataset in path in form of str tuple",
+        default="(0.2675, 0.2565, 0.2761)",
     )
     parser.add_argument(
         "--data_folder",
         type=str,
-        default="./data/input/15objects_lab/samples/train",
+        default="",
         help="path to custom dataset",
     )
     parser.add_argument(
@@ -102,7 +109,7 @@ def parse_option():
     )
 
     # other setting
-    parser.add_argument("--cosine", action="store_true", help="using cosine annealing")
+    parser.add_argument("--cosine", help="using cosine annealing", default=True)
     parser.add_argument(
         "--syncBN", action="store_true", help="using synchronized batch normalization"
     )
@@ -322,9 +329,18 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     return losses.avg
 
 
-def main():
+def main(config=None):
     opt = parse_option()
-    # opt = load_config("./configs/supcon.yaml")
+
+    # update options with config file for pipeline.py
+    if config is not None:
+        # Update options with config
+        for key, value in config["supcon"].items():
+            setattr(opt, key, value)
+        for key, value in config["common"].items():
+            setattr(opt, key, value)
+
+        print(f'Running with config: {config["supcon"]}')
 
     # build data loader
     train_loader = set_loader(opt)
@@ -361,14 +377,19 @@ def main():
                 {"loss": loss, "learning_rate": optimizer.param_groups[0]["lr"]}
             )
 
-        if epoch % opt.save_freq == 0:
+        if (epoch % opt.save_freq == 0) and (config is not None):
             save_file = os.path.join(
                 opt.save_folder, "ckpt_epoch_{epoch}.pth".format(epoch=epoch)
             )
             save_model(model, optimizer, opt, epoch, save_file)
 
     # save the last model
-    save_file = os.path.join(opt.save_folder, "last.pth")
+    if config is not None:
+        save_file = os.path.join(opt.save_folder, "last.pth")
+    else:  # If running from pipeline.py, only save one weight file
+        save_file = os.path.join("data/weights/supcon.pth")
+        if not os.path.exists("data/weights"):
+            os.makedirs("data/weights")
     save_model(model, optimizer, opt, opt.epochs, save_file)
 
     if opt.wandb:
@@ -376,6 +397,8 @@ def main():
         art.add_file(save_file)
         wandb.log_artifact(art)
         wandb.finish()
+
+    return
 
 
 if __name__ == "__main__":
