@@ -337,11 +337,11 @@ def main():
 
     # tensorboard & wandb logger
     logger = tb_logger.Logger(logdir=opt.tb_folder, flush_secs=2)
-
-    wandb.login()
-    wandb_run = wandb.init(project="supcon", config=vars(opt))
-    wandb_run.name = "supcon_" + datetime.datetime.now().strftime("%Y-%m-%d:%Hh%Mm")
-    wandb.watch(model, log_freq=100)
+    if opt.wandb:
+        wandb.login()
+        wandb_run = wandb.init(project="supcon", config=vars(opt))
+        wandb_run.name = "supcon_" + datetime.datetime.now().strftime("%Y-%m-%d:%Hh%Mm")
+        wandb.watch(model, log_freq=100)
 
     # training routine
     for epoch in range(1, opt.epochs + 1):
@@ -356,7 +356,10 @@ def main():
         # tensorboard & wandb logger
         logger.log_value("loss", loss, epoch)
         logger.log_value("learning_rate", optimizer.param_groups[0]["lr"], epoch)
-        wandb_run.log({"loss": loss, "learning_rate": optimizer.param_groups[0]["lr"]})
+        if opt.wandb:
+            wandb_run.log(
+                {"loss": loss, "learning_rate": optimizer.param_groups[0]["lr"]}
+            )
 
         if epoch % opt.save_freq == 0:
             save_file = os.path.join(
@@ -368,10 +371,11 @@ def main():
     save_file = os.path.join(opt.save_folder, "last.pth")
     save_model(model, optimizer, opt, opt.epochs, save_file)
 
-    art = wandb.Artifact("supcon", type="model")
-    art.add_file(save_file)
-    wandb.log_artifact(art)
-    wandb.finish()
+    if opt.wandb:
+        art = wandb.Artifact("supcon", type="model")
+        art.add_file(save_file)
+        wandb.log_artifact(art)
+        wandb.finish()
 
 
 if __name__ == "__main__":
