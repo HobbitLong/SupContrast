@@ -256,11 +256,14 @@ def set_model(opt):
         model = apex.parallel.convert_syncbn_model(model)
 
     if torch.cuda.is_available():
+        print("Using GPU for training.")
         if torch.cuda.device_count() > 1:
             model.encoder = torch.nn.DataParallel(model.encoder)
         model = model.cuda()
         criterion = criterion.cuda()
         cudnn.benchmark = True
+    else:
+        print("Warning: Training on CPU instead of GPU.")
 
     return model, criterion
 
@@ -384,12 +387,13 @@ def main(config=None):
             save_model(model, optimizer, opt, epoch, save_file)
 
     # save the last model
-    if config is not None:
+    if config is None:
         save_file = os.path.join(opt.save_folder, "last.pth")
     else:  # If running from pipeline.py, only save one weight file
         save_file = os.path.join("data/weights/supcon.pth")
         if not os.path.exists("data/weights"):
             os.makedirs("data/weights")
+    print("Save model to {}".format(save_file))
     save_model(model, optimizer, opt, opt.epochs, save_file)
 
     if opt.wandb:
