@@ -1,3 +1,43 @@
+# LabLight
+
+This code is an adapted fork of the [SupContrast] paper. 
+
+## Installation
+Install the dependencies with the following command:
+```bash
+pip install -r requirements.txt
+```
+Install the correct version of PyTorch for your system from [here](https://pytorch.org/get-started/locally/).
+
+## Usage
+
+If required, change the configs in the `configs/config.yaml` file.
+Prepare the training data:
+The training data should be under one protocol folder (e.g. `data/protocol_1`) and contain one subfolder for each object. The subfolder names should be the object names. The subfolders should contain the images of the object. The images should be in the `.jpg` format.
+
+To run the full pipeline (training the embedding and classifier and exporting the model to ONNX), run the following command:
+```bash
+# Change the path to the protocol folder
+python pipeline.py --data_folder path/to/protocol_folder
+```
+
+Alternatively, you can run the pipeline in a docker container. 
+To do so, do the following:
+
+First, change the base image in the Dockerfile to the correct Pytorch CUDA version for your system.
+For example, if you have CUDA 10.1 installed, change the base image to: `FROM pytorch/pytorch:1.3-cuda10.1-cudnn7-runtime`.
+You can find the correct version of the Pytorch image for your system [here](https://hub.docker.com/r/pytorch/pytorch/tags?page=1&ordering=last_updated).
+
+Second, build the docker image and run it with the following commands.
+Make sure to change the volume paths to the config file, protocol folder and output folder in the command.
+Only change the part before the colon. Use absolute paths.
+
+```bash
+docker build -t pipeline_supcon . 
+
+docker run -i --rm -v /CHANGE/TO/PATH/CONFIGS/:/train/configs/" -v "/CHANGE/TO/PATH/PROTOCOLFOLDER/:/train/data/input/" -v "CHANGE/TO/PATH/OUTPUTFOLDER/:/train/data/weights/"  --gpus all pipeline_supcon
+```
+
 # SupContrast: Supervised Contrastive Learning
 <p align="center">
   <img src="figures/teaser.png" width="700">

@@ -122,7 +122,7 @@ def load_supcon(args, device="cuda"):
 
     state_dict_encoder = {}
     for k, v in weights_encoder.items():
-        k = k.replace("encoder.module.", "")
+        k = k.replace("encoder.", "")
         state_dict_encoder[k] = v
     state_dict_encoder = {
         k: v for k, v in state_dict_encoder.items() if "head" not in k

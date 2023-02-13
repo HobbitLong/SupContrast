@@ -7,3 +7,4 @@ onnxruntime-gpu
 tqdm
 ipykernel
 wandb
+ultralytics
