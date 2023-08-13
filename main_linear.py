@@ -124,6 +124,8 @@ def set_model(opt):
         cudnn.benchmark = True
 
         model.load_state_dict(state_dict)
+    else:
+        raise NotImplementedError('This code requires GPU')
 
     return model, classifier, criterion
 
