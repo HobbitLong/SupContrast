@@ -20,12 +20,7 @@ from losses import SupConLoss
 '''
 sampel run command:
 
-python main_ore.py --batch_size 1024 \
-  --learning_rate 0.5  \ 
-  --temp 0.1 --cosine \
-  --dataset path \
-  --data_folder ./data/train \ 
-  --method SupCon \
+python3 main_ore.py --batch_size 64 --learning_rate 0.5 --temp 0.1 --cosine --dataset path --data_folder ./data/train --method SupCon
   
 The --data_folder must be of form ./path/label/xxx.png 
 '''
@@ -46,7 +41,7 @@ def parse_option():
                         help='save frequency')
     parser.add_argument('--batch_size', type=int, default=256,
                         help='batch_size')
-    parser.add_argument('--num_workers', type=int, default=16,
+    parser.add_argument('--num_workers', type=int, default=8,
                         help='num of workers to use')
     parser.add_argument('--epochs', type=int, default=1000,
                         help='number of training epochs')
