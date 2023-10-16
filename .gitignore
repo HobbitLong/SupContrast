@@ -131,3 +131,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 save/
+
+#ignore data
+race_per_7000/
+data/
