@@ -5,9 +5,8 @@ import sys
 import argparse
 import time
 import math
+from tqdm import tqdm
 
-# This code should be run in the terminal, not inside the Python script.
-# It installs the tensorboard_logger package.
 import torch
 import torch.backends.cudnn as cudnn
 from torchvision import transforms, datasets
@@ -17,6 +16,19 @@ from util import adjust_learning_rate, warmup_learning_rate
 from util import set_optimizer, save_model
 from networks.resnet_big import SupConResNet
 from losses import SupConLoss
+
+'''
+sampel run command:
+
+python main_ore.py --batch_size 1024 \
+  --learning_rate 0.5  \ 
+  --temp 0.1 --cosine \
+  --dataset path \
+  --data_folder ./data/train \ 
+  --method SupCon \
+  
+The --data_folder must be of form ./path/label/xxx.png 
+'''
 
 try:
     import apex
@@ -55,8 +67,8 @@ def parse_option():
     parser.add_argument('--model', type=str, default='resnet50')
     parser.add_argument('--dataset', type=str, default='cifar10',
                         choices=['cifar10', 'cifar100', 'path'], help='dataset')
-    parser.add_argument('--mean', type=str, help='mean of dataset in path in form of str tuple')
-    parser.add_argument('--std', type=str, help='std of dataset in path in form of str tuple')
+    # parser.add_argument('--mean', type=str, help='mean of dataset in path in form of str tuple')
+    # parser.add_argument('--std', type=str, help='std of dataset in path in form of str tuple')
     parser.add_argument('--data_folder', type=str, default=None, help='path to custom dataset')
     parser.add_argument('--size', type=int, default=32, help='parameter for RandomResizedCrop')
 
@@ -82,9 +94,9 @@ def parse_option():
 
     # check if dataset is path that passed required arguments
     if opt.dataset == 'path':
-        assert opt.data_folder is not None \
-            and opt.mean is not None \
-            and opt.std is not None
+        assert opt.data_folder is not None
+            # and opt.mean is not None \
+            # and opt.std is not None
 
     # set the path according to the environment
     if opt.data_folder is None:
@@ -130,49 +142,31 @@ def parse_option():
 
 
 def set_loader(opt):
-    # construct data loader
-    if opt.dataset == 'cifar10':
-        mean = (0.4914, 0.4822, 0.4465)
-        std = (0.2023, 0.1994, 0.2010)
-    elif opt.dataset == 'cifar100':
-        mean = (0.5071, 0.4867, 0.4408)
-        std = (0.2675, 0.2565, 0.2761)
-    elif opt.dataset == 'path':
-        mean = eval(opt.mean)
-        std = eval(opt.std)
-    else:
-        raise ValueError('dataset not supported: {}'.format(opt.dataset))
-    normalize = transforms.Normalize(mean=mean, std=std)
+    #data resize to 128x128
+    input_shape = (3, 128, 128)
+
+    print("start loading data...")
 
     train_transform = transforms.Compose([
-        transforms.RandomResizedCrop(size=opt.size, scale=(0.2, 1.)),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomApply([
-            transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)
-        ], p=0.8),
-        transforms.RandomGrayscale(p=0.2),
-        transforms.ToTensor(),
-        normalize,
-    ])
-
-    if opt.dataset == 'cifar10':
-        train_dataset = datasets.CIFAR10(root=opt.data_folder,
-                                         transform=TwoCropTransform(train_transform),
-                                         download=True)
-    elif opt.dataset == 'cifar100':
-        train_dataset = datasets.CIFAR100(root=opt.data_folder,
-                                          transform=TwoCropTransform(train_transform),
-                                          download=True)
-    elif opt.dataset == 'path':
-        train_dataset = datasets.ImageFolder(root=opt.data_folder,
-                                            transform=TwoCropTransform(train_transform))
-    else:
-        raise ValueError(opt.dataset)
+            transforms.Resize(int(input_shape[1] * 156 / 128)),
+            transforms.RandomCrop(input_shape[1:]),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.5, 0.5, 0.5],
+                            std=[0.5, 0.5, 0.5])
+        ])  
+    
+    train_dataset = datasets.ImageFolder(
+        root=opt.data_folder,
+        transform=TwoCropTransform(train_transform)
+    )
 
     train_sampler = None
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=opt.batch_size, shuffle=(train_sampler is None),
         num_workers=opt.num_workers, pin_memory=True, sampler=train_sampler)
+
+    print("train_loader length: ", len(train_loader))
 
     return train_loader
 
@@ -191,7 +185,7 @@ def set_model(opt):
         model = model.cuda()
         criterion = criterion.cuda()
         cudnn.benchmark = True
-
+    
     return model, criterion
 
 
@@ -204,7 +198,7 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     losses = AverageMeter()
 
     end = time.time()
-    for idx, (images, labels) in enumerate(train_loader):
+    for idx, (images, labels) in tqdm(enumerate(train_loader), total=len(train_loader), desc="Training"):
         data_time.update(time.time() - end)
 
         images = torch.cat([images[0], images[1]], dim=0)
@@ -252,7 +246,6 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
 
     return losses.avg
 
-
 def main():
     opt = parse_option()
 
@@ -266,7 +259,7 @@ def main():
     optimizer = set_optimizer(opt, model)
 
     # tensorboard
-    logger = tb_logger.Logger(logdir=opt.tb_folder, flush_secs=2)
+    # logger = tb_logger.Logger(logdir=opt.tb_folder, flush_secs=2)
 
     # training routine
     for epoch in range(1, opt.epochs + 1):
@@ -278,9 +271,9 @@ def main():
         time2 = time.time()
         print('epoch {}, total time {:.2f}'.format(epoch, time2 - time1))
 
-        # tensorboard logger
-        logger.log_value('loss', loss, epoch)
-        logger.log_value('learning_rate', optimizer.param_groups[0]['lr'], epoch)
+        # TODO: add logger
+        # logger.log_value('loss', loss, epoch)
+        # logger.log_value('learning_rate', optimizer.param_groups[0]['lr'], epoch)
 
         if epoch % opt.save_freq == 0:
             save_file = os.path.join(
