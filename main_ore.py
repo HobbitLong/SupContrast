@@ -184,7 +184,7 @@ def set_model(opt):
     return model, criterion
 
 
-def train(train_loader, model, criterion, optimizer, epoch, opt):
+def train(train_loader, model, criterion, optimizer, epoch, opt, position=0, leave=True):
     """one epoch training"""
     model.train()
 
@@ -257,7 +257,7 @@ def main():
     # logger = tb_logger.Logger(logdir=opt.tb_folder, flush_secs=2)
 
     # training routine
-    for epoch in range(1, opt.epochs + 1):
+    for epoch in tqdm(range(1, opt.epochs + 1), total=opt.epochs, desc="Epochs")):
         adjust_learning_rate(opt, optimizer, epoch)
 
         # train for one epoch
