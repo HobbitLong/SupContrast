@@ -257,7 +257,7 @@ def main():
     # logger = tb_logger.Logger(logdir=opt.tb_folder, flush_secs=2)
 
     # training routine
-    for epoch in tqdm(range(1, opt.epochs + 1), total=opt.epochs, desc="Epochs")):
+    for epoch in tqdm(range(1, opt.epochs + 1), total=opt.epochs, desc="Epochs"):
         adjust_learning_rate(opt, optimizer, epoch)
 
         # train for one epoch
