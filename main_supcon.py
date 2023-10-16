@@ -6,7 +6,8 @@ import argparse
 import time
 import math
 
-import tensorboard_logger as tb_logger
+# This code should be run in the terminal, not inside the Python script.
+# It installs the tensorboard_logger package.
 import torch
 import torch.backends.cudnn as cudnn
 from torchvision import transforms, datasets
