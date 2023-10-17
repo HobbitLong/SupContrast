@@ -14,13 +14,13 @@ from torchvision import transforms, datasets
 from util import TwoCropTransform, AverageMeter
 from util import adjust_learning_rate, warmup_learning_rate
 from util import set_optimizer, save_model
-from networks.resnet_big import SupConResNet
+from networks.facenet import SupConResNet
 from losses import SupConLoss
 
 '''
 sampel run command:
 
-python3 main_ore.py --batch_size 64 --learning_rate 0.5 --temp 0.1 --cosine --dataset path --data_folder ./data/train --method SupCon
+python3 main_ore.py --batch_size 16 --model resnet_face18 --learning_rate 0.5 --temp 0.1 --cosine --dataset path --data_folder ./data/train --method SupCon
   
 The --data_folder must be of form ./path/label/xxx.png 
 '''
@@ -59,7 +59,7 @@ def parse_option():
                         help='momentum')
 
     # model dataset
-    parser.add_argument('--model', type=str, default='resnet50')
+    parser.add_argument('--model', type=str, default='resnet_face50')
     parser.add_argument('--dataset', type=str, default='cifar10',
                         choices=['cifar10', 'cifar100', 'path'], help='dataset')
     # parser.add_argument('--mean', type=str, help='mean of dataset in path in form of str tuple')

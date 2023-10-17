@@ -204,11 +204,11 @@ class SEBlock(nn.Module):
 
 class ResNetFace(nn.Module):
 
-    def __init__(self, block, layers, num_classes, save_center=False, use_se=True):
+    def __init__(self, block, layers, ):
         self.inplanes = 64
-        self.use_se = use_se
-        self.num_classes = num_classes
-        self.save_center = save_center
+        # self.use_se = use_se
+        # self.num_classes = num_classes
+        # self.save_center = save_center
         super(ResNetFace, self).__init__()
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
@@ -223,8 +223,8 @@ class ResNetFace(nn.Module):
         self.fc5 = nn.Linear(512 * block.expansion * 8 * 8, 512)
         self.bn5 = nn.BatchNorm1d(512)
 
-        if self.save_center:
-            self.register_buffer('centers', (torch.rand(num_classes, 512)- 0.5) * 2)
+        # if self.save_center:
+        #     self.register_buffer('centers', (torch.rand(num_classes, 512)- 0.5) * 2)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -235,7 +235,6 @@ class ResNetFace(nn.Module):
             elif isinstance(m, nn.Linear):
                 nn.init.xavier_normal_(m.weight)
                 nn.init.constant_(m.bias, 0)
-
 
     def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
@@ -273,12 +272,12 @@ class ResNetFace(nn.Module):
         return x
 
 
-def resnet_face18(num_classes, save_center=False, use_se=True, **kwargs):
-    model = ResNetFace(IRBlock, [2, 2, 2, 2], num_classes, save_center, use_se=use_se, **kwargs)
+def resnet_face18(**kwargs):
+    model = ResNetFace(IRBlock, [2, 2, 2, 2], **kwargs)
     return model
 
-def resnet_face50(num_classes, save_center=False, use_se=True, **kwargs):
-    model = ResNetFace(IRBottleneck, [3, 4, 6, 3], num_classes, save_center, use_se=use_se, **kwargs)
+def resnet_face50(**kwargs):
+    model = ResNetFace(IRBottleneck, [3, 4, 6, 3], **kwargs)
     return model
 
 #TODO: decide add batchnorm or not 
