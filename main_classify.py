@@ -49,8 +49,7 @@ def parse_option():
 
     # model dataset
     parser.add_argument('--model', type=str, default='resnet50')
-    parser.add_argument('--dataset', type=str, default='cifar10',
-                        choices=['cifar10', 'cifar100'], help='dataset')
+    parser.add_argument('--dataset', type=str, default='path')
 
     # other setting
     parser.add_argument('--cosine', action='store_true',
@@ -90,8 +89,8 @@ def parse_option():
         else:
             opt.warmup_to = opt.learning_rate
 
-    if opt.dataset == 'cifar10':
-        opt.n_cls = 10
+    if opt.n_cls is None:
+        raise 
     elif opt.dataset == 'cifar100':
         opt.n_cls = 100
     else:
