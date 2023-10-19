@@ -133,7 +133,7 @@ dmypy.json
 save/
 
 #ignore data
-race_per_7000/
+data/race_per_7000/
 data/train
 data/test
 *.zip
