@@ -19,7 +19,9 @@ try:
     from apex import amp, optimizers
 except ImportError:
     pass
-
+'''
+python3 main_lienar.py ----batch_size 16 --learning_rate 0.5 --epochs 2 --temp 0.1 --cosine --dataset path --data_folder ./data/train --method SupCon
+'''
 
 def parse_option():
     parser = argparse.ArgumentParser('argument for training')
@@ -49,8 +51,8 @@ def parse_option():
 
     # model dataset
     parser.add_argument('--model', type=str, default='resnet50')
-    parser.add_argument('--dataset', type=str, default='cifar10',
-                        choices=['cifar10', 'cifar100'], help='dataset')
+    parser.add_argument('--dataset', type=str, default='path',
+                        choices=['path', 'cifar10', 'cifar100'], help='dataset')
 
     # other setting
     parser.add_argument('--cosine', action='store_true',
@@ -98,6 +100,8 @@ def parse_option():
         raise ValueError('dataset not supported: {}'.format(opt.dataset))
 
     return opt
+
+def set_loader(opt):
 
 
 def set_model(opt):
