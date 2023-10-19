@@ -7,6 +7,8 @@ import math
 
 import torch
 import torch.backends.cudnn as cudnn
+import pandas as pd
+from torchvision import transforms, datasets
 
 from main_ce import set_loader
 from util import AverageMeter
@@ -20,7 +22,7 @@ try:
 except ImportError:
     pass
 '''
-python3 main_lienar.py ----batch_size 16 --learning_rate 0.5 --epochs 2 --temp 0.1 --cosine --dataset path --data_folder ./data/train --method SupCon
+python3 main_linear.py --batch_size 16 --num_workers 8 --learning_rate 0.5 --epochs 2 --cosine --dataset path --train_folder ./data/train --val_folder ./data/test/African --cur_race African --n_cls 500
 '''
 
 def parse_option():
@@ -32,7 +34,7 @@ def parse_option():
                         help='save frequency')
     parser.add_argument('--batch_size', type=int, default=256,
                         help='batch_size')
-    parser.add_argument('--num_workers', type=int, default=16,
+    parser.add_argument('--num_workers', type=int, default=8,
                         help='num of workers to use')
     parser.add_argument('--epochs', type=int, default=100,
                         help='number of training epochs')
@@ -53,6 +55,10 @@ def parse_option():
     parser.add_argument('--model', type=str, default='resnet50')
     parser.add_argument('--dataset', type=str, default='path',
                         choices=['path', 'cifar10', 'cifar100'], help='dataset')
+    parser.add_argument('--n_cls', type=int, help='number of classes')
+    parser.add_argument('--train_folder', type=str, help='path to train folder')
+    parser.add_argument('--val_folder', type=str, help='path to val folder')
+    parser.add_argument('--cur_race', type=str, choices=['Caucasian', 'African', 'Asian', 'Indian'], help="enter race currently testing")
 
     # other setting
     parser.add_argument('--cosine', action='store_true',
@@ -66,7 +72,7 @@ def parse_option():
     opt = parser.parse_args()
 
     # set the path according to the environment
-    opt.data_folder = './datasets/'
+    # opt.data_folder = './datasets/'
 
     iterations = opt.lr_decay_epochs.split(',')
     opt.lr_decay_epochs = list([])
@@ -92,16 +98,50 @@ def parse_option():
         else:
             opt.warmup_to = opt.learning_rate
 
-    if opt.dataset == 'cifar10':
-        opt.n_cls = 10
-    elif opt.dataset == 'cifar100':
-        opt.n_cls = 100
-    else:
-        raise ValueError('dataset not supported: {}'.format(opt.dataset))
+    if opt.dataset == 'path':
+        assert opt.train_folder is not None \
+            and opt.val_folder is not None \
+            and opt.n_cls is not None \
+            and opt.cur_race is not None
 
     return opt
 
 def set_loader(opt):
+    #get train and val loader
+    input_shape = [3, 128, 128]
+    train_transform = transforms.Compose([
+        transforms.Resize(int(input_shape[1] * 156 / 128)),
+        transforms.RandomCrop(input_shape[1:]),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5, 0.5, 0.5],
+                        std=[0.5, 0.5, 0.5])
+    ])  
+
+    val_transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5, 0.5, 0.5],
+                        std=[0.5, 0.5, 0.5])
+    ])
+
+    train_dataset = datasets.ImageFolder(
+        root=opt.train_folder,
+        transform=train_transform
+    )
+
+    val_dataset = datasets.ImageFolder(
+        root=opt.val_folder,
+        transform=val_transform
+    )
+
+    train_sampler = None
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=opt.batch_size, shuffle=(train_sampler is None),
+        num_workers=opt.num_workers, pin_memory=True, sampler=train_sampler)
+    val_loader = torch.utils.data.DataLoader(
+        val_dataset, batch_size=opt.batch_size, shuffle=(train_sampler is None),
+        num_workers=opt.num_workers, pin_memory=True, sampler=train_sampler)
+    
+    return train_loader, val_loader
 
 
 def set_model(opt):
