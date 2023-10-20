@@ -10,7 +10,6 @@ import torch.backends.cudnn as cudnn
 import pandas as pd
 from torchvision import transforms, datasets
 
-from main_ce import set_loader
 from util import AverageMeter
 from util import adjust_learning_rate, warmup_learning_rate, accuracy
 from util import set_optimizer
