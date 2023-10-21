@@ -237,12 +237,17 @@ def validate(val_loader, model, classifier, criterion, opt):
     losses = AverageMeter()
     top1 = AverageMeter()
 
+    asian_acc = []
+
+
     with torch.no_grad():
         end = time.time()
         for idx, (images, labels) in enumerate(val_loader):
             images = images.float().cuda()
             labels = labels.cuda()
             bsz = labels.shape[0]
+
+
 
             # forward
             output = classifier(model.encoder(images))
