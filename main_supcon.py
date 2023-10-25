@@ -4,7 +4,6 @@ import os
 import sys
 import time
 
-import tensorboard_logger as tb_logger
 import torch
 from torch.backends import cudnn
 from torchvision import datasets, transforms
@@ -89,9 +88,6 @@ def parse_option():
     # other setting
     parser.add_argument("--cosine", action="store_true", help="using cosine annealing")
     parser.add_argument(
-        "--syncBN", action="store_true", help="using synchronized batch normalization"
-    )
-    parser.add_argument(
         "--warm", action="store_true", help="warm-up for large batch training"
     )
     parser.add_argument(
@@ -110,7 +106,6 @@ def parse_option():
     if opt.data_folder is None:
         opt.data_folder = "./datasets/"
     opt.model_path = "./save/SupCon/{}_models".format(opt.dataset)
-    opt.tb_path = "./save/SupCon/{}_tensorboard".format(opt.dataset)
 
     iterations = opt.lr_decay_epochs.split(",")
     opt.lr_decay_epochs = list([])
@@ -148,10 +143,6 @@ def parse_option():
             )
         else:
             opt.warmup_to = opt.learning_rate
-
-    opt.tb_folder = os.path.join(opt.tb_path, opt.model_name)
-    if not os.path.isdir(opt.tb_folder):
-        os.makedirs(opt.tb_folder)
 
     opt.save_folder = os.path.join(opt.model_path, opt.model_name)
     if not os.path.isdir(opt.save_folder):
@@ -221,10 +212,6 @@ def set_loader(opt):
 def set_model(opt):
     model = SupConResNet(name=opt.model)
     criterion = SupConLoss(temperature=opt.temp)
-
-    # enable synchronized Batch Normalization
-    if opt.syncBN:
-        model = apex.parallel.convert_syncbn_model(model)
 
     if torch.cuda.is_available():
         if torch.cuda.device_count() > 1:
@@ -312,9 +299,6 @@ def main():
     # build optimizer
     optimizer = set_optimizer(opt, model)
 
-    # tensorboard
-    logger = tb_logger.Logger(logdir=opt.tb_folder, flush_secs=2)
-
     # training routine
     for epoch in range(1, opt.epochs + 1):
         adjust_learning_rate(opt, optimizer, epoch)
@@ -326,8 +310,8 @@ def main():
         print("epoch {}, total time {:.2f}".format(epoch, time2 - time1))
 
         # tensorboard logger
-        logger.log_value("loss", loss, epoch)
-        logger.log_value("learning_rate", optimizer.param_groups[0]["lr"], epoch)
+        print(f"epoch {epoch} loss: {loss}")
+        print(f"learning_rate: {optimizer.param_groups[0]['lr']}")
 
         if epoch % opt.save_freq == 0:
             save_file = os.path.join(
