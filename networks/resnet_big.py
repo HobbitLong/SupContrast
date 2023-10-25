@@ -6,7 +6,7 @@ Adapted from: https://github.com/bearpaw/pytorch-classification
 """
 import torch
 from torch import nn
-from torch.functional as F
+from torch.nn import functional as F
 
 
 class BasicBlock(nn.Module):
