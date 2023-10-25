@@ -3,9 +3,9 @@
   <img src="figures/teaser.png" width="700">
 </p>
 
-This repo covers an reference implementation for the following papers in PyTorch, using CIFAR as an illustrative example:  
-(1) Supervised Contrastive Learning. [Paper](https://arxiv.org/abs/2004.11362)  
-(2) A Simple Framework for Contrastive Learning of Visual Representations. [Paper](https://arxiv.org/abs/2002.05709)  
+This repo covers an reference implementation for the following papers in PyTorch, using CIFAR as an illustrative example:
+(1) Supervised Contrastive Learning. [Paper](https://arxiv.org/abs/2004.11362)
+(2) A Simple Framework for Contrastive Learning of Visual Representations. [Paper](https://arxiv.org/abs/2002.05709)
 
 ## Update
 
@@ -40,32 +40,32 @@ Results on CIFAR-10:
 |          |Arch | Setting | Loss | Accuracy(%) |
 |----------|:----:|:---:|:---:|:---:|
 |  SupCrossEntropy | ResNet50 | Supervised   | Cross Entropy |  95.0  |
-|  SupContrast     | ResNet50 | Supervised   | Contrastive   |  96.0  | 
+|  SupContrast     | ResNet50 | Supervised   | Contrastive   |  96.0  |
 |  SimCLR          | ResNet50 | Unsupervised | Contrastive   |  93.6  |
 
 Results on CIFAR-100:
 |          |Arch | Setting | Loss | Accuracy(%) |
 |----------|:----:|:---:|:---:|:---:|
 |  SupCrossEntropy | ResNet50 | Supervised   | Cross Entropy |  75.3 |
-|  SupContrast     | ResNet50 | Supervised   | Contrastive   |  76.5 | 
+|  SupContrast     | ResNet50 | Supervised   | Contrastive   |  76.5 |
 |  SimCLR          | ResNet50 | Unsupervised | Contrastive   |  70.7 |
 
 Results on ImageNet (Stay tuned):
 |          |Arch | Setting | Loss | Accuracy(%) |
 |----------|:----:|:---:|:---:|:---:|
 |  SupCrossEntropy | ResNet50 | Supervised   | Cross Entropy |  -  |
-|  SupContrast     | ResNet50 | Supervised   | Contrastive   |  79.1 (MoCo trick)  | 
+|  SupContrast     | ResNet50 | Supervised   | Contrastive   |  79.1 (MoCo trick)  |
 |  SimCLR          | ResNet50 | Unsupervised | Contrastive   |  -  |
 
 ## Running
-You might use `CUDA_VISIBLE_DEVICES` to set proper number of GPUs, and/or switch to CIFAR100 by `--dataset cifar100`.  
+You might use `CUDA_VISIBLE_DEVICES` to set proper number of GPUs, and/or switch to CIFAR100 by `--dataset cifar100`.
 **(1) Standard Cross-Entropy**
 ```
 python main_ce.py --batch_size 1024 \
   --learning_rate 0.8 \
   --cosine --syncBN \
 ```
-**(2) Supervised Contrastive Learning**  
+**(2) Supervised Contrastive Learning**
 Pretraining stage:
 ```
 python main_supcon.py --batch_size 1024 \
@@ -84,7 +84,7 @@ python main_linear.py --batch_size 512 \
   --learning_rate 5 \
   --ckpt /path/to/model.pth
 ```
-**(3) SimCLR**  
+**(3) SimCLR**
 Pretraining stage:
 ```
 python main_supcon.py --batch_size 1024 \
@@ -104,7 +104,7 @@ python main_linear.py --batch_size 512 \
 On custom dataset:
 ```
 python main_supcon.py --batch_size 1024 \
-  --learning_rate 0.5  \ 
+  --learning_rate 0.5  \
   --temp 0.1 --cosine \
   --dataset path \
   --data_folder ./path \
@@ -115,7 +115,7 @@ python main_supcon.py --batch_size 1024 \
 
 The `--data_folder` must be of form ./path/label/xxx.png folowing https://pytorch.org/docs/stable/torchvision/datasets.html#torchvision.datasets.ImageFolder convension.
 
-and 
+and
 ## t-SNE Visualization
 
 **(1) Standard Cross-Entropy**

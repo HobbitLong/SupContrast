@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "supervised-contrastive-loss"
+version = "0.1.0"
+description = ""
+authors = ["Sean (Seok-Won) Yi <seantuokc@gmail.com>"]
+readme = "README.md"
+packages = [{include = "supervised_contrastive_loss"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
