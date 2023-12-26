@@ -86,7 +86,7 @@ class SupConLoss(nn.Module):
 
         # compute log_prob
         exp_logits = torch.exp(logits) * logits_mask
-        log_prob = logits - torch.log(exp_logits.sum(1, keepdim=True))
+        log_prob = logits - torch.log(exp_logits.sum(1, keepdim=True) + 1e-6) # prevent computing log(0), which will produce Nan in the loss
 
         # compute mean of log-likelihood over positive
         # modified to handle edge cases when there is no positive pair
