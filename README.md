@@ -14,14 +14,15 @@ ${\color{red}Note}$: if you found it not easy to parse the supcon loss implement
 ImageNet model (small batch size with the trick of the momentum encoder) is released [here](https://www.dropbox.com/s/l4a69ececk4spdt/supcon.pth?dl=0). It achieved > 79% top-1 accuracy.
 
 ## Loss Function
-The loss function [`SupConLoss`](https://github.com/HobbitLong/SupContrast/blob/master/losses.py#L11) in `losses.py` takes `features` (L2 normalized) and `labels` as input, and return the loss. If `labels` is `None` or not passed to the it, it degenerates to SimCLR.
+The loss function [`SupConLoss`](https://github.com/HobbitLong/SupContrast/blob/master/losses.py#L11) in `losses.py` takes `features` (L2 normalized) and `labels` as input, and return the loss. If `labels` is `None` or not passed to the it, it degenerates to SimCLR. To use SimCLR loss, temperature and base_temperature must be set to the same value.
 
 Usage:
 ```python
 from losses import SupConLoss
 
 # define loss with a temperature `temp`
-criterion = SupConLoss(temperature=temp)
+criterionSupContrast = SupConLoss(temperature=temp)
+criterionSimCLR = SupConLoss(temperature=temp, base_temperature=temp)
 
 # features: [bsz, n_views, f_dim]
 # `n_views` is the number of crops from each image
@@ -31,9 +32,9 @@ features = ...
 labels = ...
 
 # SupContrast
-loss = criterion(features, labels)
+loss = criterionSupContrast(features, labels)
 # or SimCLR
-loss = criterion(features)
+loss = criterionSimCLR(features)
 ...
 ```
 
