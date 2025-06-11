@@ -4,6 +4,8 @@ import math
 import numpy as np
 import torch
 import torch.optim as optim
+import random
+import nlpaug.augmenter.word as naw
 
 
 class TwoCropTransform:
@@ -14,7 +16,19 @@ class TwoCropTransform:
     def __call__(self, x):
         return [self.transform(x), self.transform(x)]
 
+class TextAugment:
+    """Create two augmented versions of the same text"""
+    def __init__(self):
+        self.aug = naw.WordEmbsAug(
+            model_type='fasttext',
+            model_path='cc.de.300.bin',
+            action="substitute",
+            aug_p=0.3
+        )  # Synonym replacement augmentation
 
+    def __call__(self, text):
+        return [self.aug.augment(text)[0], self.aug.augment(text)[0]]
+    
 class AverageMeter(object):
     """Computes and stores the average and current value"""
     def __init__(self):
